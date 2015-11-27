@@ -1,0 +1,122 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+
+	<Font name="ExperiencerFont" font="Interface/AddOns/Experiencer/Media/DORISPP.TTF" outline="NORMAL" virtual="true">
+		<Shadow>
+			<Offset>
+				<AbsDimension x="0" y="-2"/>
+			</Offset>
+			<Color r="0" g="0" b="0" a="0.35"/>
+		</Shadow>
+		<FontHeight>
+			<AbsValue val="10"/>
+		</FontHeight>
+	</Font>
+	<Font name="ExperiencerBigFont" font="Interface/AddOns/Experiencer/Media/DORISPP.TTF" outline="NORMAL" virtual="true">
+		<Shadow>
+			<Offset>
+				<AbsDimension x="0" y="-2"/>
+			</Offset>
+			<Color r="0" g="0" b="0" a="0.35"/>
+		</Shadow>
+		<FontHeight>
+			<AbsValue val="13"/>
+		</FontHeight>
+	</Font>
+	
+	<StatusBar name="ExperiencerBarTemplate" virtual="true">
+		<Anchors>
+			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="4" y="2"/>
+			<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-4" y="-2"/>
+		</Anchors>
+		<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
+		<BarColor r="1" g="1" b="1"/>
+	</StatusBar>
+	
+	<Frame name="ExperiencerFrame" parent="UIParent" frameStrata="LOW">
+		<Anchors>
+			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="0" y="-1"/>
+			<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="9"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture setAllPoints="true">
+					<Color r="0" g="0" b="0" a="0.5"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<StatusBar name="ExperiencerRestedBar" inherits="ExperiencerBarTemplate"/>
+			<StatusBar name="ExperiencerVisualizerBar" inherits="ExperiencerBarTemplate" hidden="true">
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="4" y="2"/>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-4" y="-6"/>
+				</Anchors>
+				<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture" alphaMode="ADD"/>
+				<Scripts>
+					<OnLoad>
+						self:SetFrameLevel(ExperiencerRestedBar:GetFrameLevel()+1);
+					</OnLoad>
+				</Scripts>
+			</StatusBar>
+			<StatusBar name="ExperiencerGainBar" inherits="ExperiencerBarTemplate">
+				<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture" alphaMode="ADD"/>
+				<Scripts>
+					<OnLoad>
+						self:SetFrameLevel(ExperiencerVisualizerBar:GetFrameLevel()+1);
+					</OnLoad>
+				</Scripts>
+			</StatusBar>
+			<StatusBar name="ExperiencerColorBar" inherits="ExperiencerBarTemplate">
+				<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
+				<Scripts>
+					<OnLoad>
+						self:SetFrameLevel(ExperiencerGainBar:GetFrameLevel()+1);
+					</OnLoad>
+				</Scripts>
+			</StatusBar>
+			<StatusBar name="ExperiencerBar" inherits="ExperiencerBarTemplate">
+				<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture" alphaMode="ADD"/>
+				<Scripts>
+					<OnLoad>
+						self:SetFrameLevel(ExperiencerColorBar:GetFrameLevel()+1);
+					</OnLoad>
+					<OnShow function="ExperiencerBar_OnShow"/>
+				</Scripts>
+			</StatusBar>
+			<Frame>
+				<Size x="1500" y="10"/>
+				<Anchors>
+					<Anchor point="BOTTOM" relativePoint="BOTTOM" x="0" y="0"/>
+				</Anchors>
+				<Layers>
+					<Layer level="ARTWORK">
+						<FontString name="ExperiencerBarText" inherits="ExperiencerFont" hidden="true">
+							<Size x="1500" y="10"/>
+							<Anchors>
+								<Anchor point="BOTTOM" x="0" y="3"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnLoad>
+						self:SetFrameLevel(ExperiencerBar:GetFrameLevel()+2);
+					</OnLoad>
+				</Scripts>
+			</Frame>
+		</Frames>
+		
+		<Scripts>
+			<OnLoad>
+				-- self:EnableMouse(true);
+				-- self:RegisterForClicks("LeftButton", "RightButton", "MiddleButton");
+			</OnLoad>
+			<OnMouseDown function="Experiencer_OnMouseDown"/>
+			<OnUpdate function="Experiencer_OnUpdate"/>
+			<OnEnter function="Experiencer_OnEnter"/>
+			<OnLeave function="Experiencer_OnLeave"/>
+		</Scripts>
+	</Frame>
+	
+</Ui>
