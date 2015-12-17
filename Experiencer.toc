@@ -2,7 +2,7 @@
 ## Title: Experiencer
 ## Notes: Simple and Advanced Experience and Reputation Progress Bar
 ## Author: Sonaza
-## Version: 1.2.0
+## Version: 1.2.1
 ## OptionalDeps: Ace3
 ## SavedVariables: ExperiencerDB
 

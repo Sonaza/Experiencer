@@ -414,41 +414,6 @@ function A:OpenContextMenu()
 		});
 	end
 	
-	-- if(FXP_UpdateQuestXP) then
-	-- 	local fwMenuData = {};
-		
-	-- 	if(FXP_UpdateQuestXP) then
-	-- 		tinsert(fwMenuData, {
-	-- 			text = "Fizzwidget XP Visualizer", isTitle = true, notCheckable = true,
-	-- 		});
-	-- 		tinsert(fwMenuData, {
-	-- 			text = "Show Quest XP Text",
-	-- 			func = function() self.db.global.QuestXP.ShowText = not self.db.global.QuestXP.ShowText; A:RefreshBar(); end,
-	-- 			checked = function() return self.db.global.QuestXP.ShowText; end,
-	-- 			isNotRadio = true,
-	-- 		});
-	-- 		tinsert(fwMenuData, {
-	-- 			text = "Also Add XP from Incomplete Quests",
-	-- 			func = function() self.db.global.QuestXP.AddIncomplete = not self.db.global.QuestXP.AddIncomplete; A:RefreshBar(); end,
-	-- 			checked = function() return self.db.global.QuestXP.AddIncomplete; end,
-	-- 			isNotRadio = true,
-	-- 		});
-	-- 		tinsert(fwMenuData, {
-	-- 			text = "Show XP Visualizer Bar",
-	-- 			func = function() self.db.global.QuestXP.ShowVisualizer = not self.db.global.QuestXP.ShowVisualizer; A:UpdateFrames(); end,
-	-- 			checked = function() return self.db.global.QuestXP.ShowVisualizer; end,
-	-- 			isNotRadio = true,
-	-- 		});
-	-- 	end
-		
-	-- 	tinsert(contextMenuData, 13, {
-	-- 		text = "Fizzwidget Options",
-	-- 		notCheckable = true,
-	-- 		hasArrow = true,
-	-- 		menuList = fwMenuData,
-	-- 	});
-	-- end
-	
 	if(not A:IsPlayerMaxLevel()) then
 		if(self.db.profile.Mode == EXPERIENCER_MODE_XP) then
 			tinsert(contextMenuData, 3, {
@@ -933,7 +898,7 @@ function A:RefreshExperienceBar(set_value)
 	ExperiencerGainBar:SetMinMaxValues(0, max_xp)
 	ExperiencerGainBar:SetValue(current_xp);
 	
-	if(self.db.global.QuestXP.ShowVisualizer) then
+	if(self.db.global.QuestXP.ShowVisualizer and A.IsVisible) then
 		ExperiencerVisualizerBar:Show();
 		ExperiencerVisualizerBar:SetMinMaxValues(0, max_xp);
 		ExperiencerVisualizerBar:SetValue(current_xp + questXP);
