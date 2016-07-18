@@ -916,7 +916,7 @@ function A:RefreshExperienceBar(set_value)
 	ExperiencerRestedBar:SetValue(current_xp + rested_xp)
 	
 	
-	local progress = current_xp / max_xp;
+	local progress = current_xp / (max_xp > 0 and max_xp or 1);
 	local progressColor = A:GetProgressColor(progress);
 	
 	local outputText = {};
