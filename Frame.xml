@@ -24,15 +24,6 @@
 		</FontHeight>
 	</Font>
 	
-	<StatusBar name="testbar" inherits="AnimatedStatusBarTemplate" parent="UIParent" frameStrata="HIGH">
-		<Size x="400" y="8"/>
-		<Anchors>
-			<Anchor point="CENTER" relativePoint="CENTER" x="0" y="0"/>
-		</Anchors>
-		<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
-		<BarColor r="1" g="0.8" b="0.4"/>
-	</StatusBar>
-	
 	<StatusBar name="ExperiencerAnimatedBarTemplate" inherits="AnimatedStatusBarTemplate" virtual="true">
 		<Anchors>
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
@@ -93,7 +84,6 @@
 							<OnLoad>
 								self:SetFrameLevel(ExperiencerFrameBars.color:GetFrameLevel()+1);
 							</OnLoad>
-							<OnShow function="ExperiencerBar_OnShow"/>
 						</Scripts>
 					</StatusBar>
 					

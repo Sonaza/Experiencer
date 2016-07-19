@@ -20,10 +20,6 @@ local ANCHOR_TOP = 1;
 local ANCHOR_BOTTOM = 2;
 
 function Addon:OnInitialize()
-	-- SLASH_EXPERIENCER1	= "/exp";
-	-- SLASH_EXPERIENCER2	= "/experiencer";
-	-- SlashCmdList["EXPERIENCER"] = function(command) Addon:ConsoleHandler(command); end
-	
 	local moduleVars = Addon:GetModuleSavedVariableDefaults();
 	
 	local defaults = {
@@ -47,22 +43,19 @@ function Addon:OnInitialize()
 end
 
 function Addon:OnEnable()
-	Addon:InitializeModules();
-	
 	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
 	
 	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
 	Addon:RegisterEvent("PET_BATTLE_CLOSE");
 	
+	Addon:InitializeModules();
+	Addon:RefreshBar(true);
+	
 	Addon.IsVisible = true;
 	Addon.NoReputation = false;
 	
 	Addon:SetMode(self.db.char.Mode);
-	Addon:ToggleVisibility(self.db.char.Visible);
-	
-	-- Addon:RestoreSession();
-	
-	Addon:RefreshBar(true);
+	Addon:UpdateFrames();
 end
 
 Addon.modules = {};
@@ -117,8 +110,8 @@ function Addon:InitializeModules()
 		end
 		
 		module.db = {
-			char = Addon.db.char.modules[moduleName],
-			global = Addon.db.global.modules[moduleName],
+			char = self.db.char.modules[moduleName],
+			global = self.db.global.modules[moduleName],
 		};
 		
 		module:Initialize();
@@ -151,17 +144,6 @@ function Addon:FormatTime(t)
 	else
 		return format(S, s)
 	end
-end
-
-
-
-function Addon:GetCurrentResolutionSize()
-	local resolutions		= { GetScreenResolutions() };
-	return strsplit("x", resolutions[GetCurrentResolution()]);
-end
-
-function Addon:ConsoleHandler(command)
-	
 end
 
 function Addon:OpenContextMenu()
@@ -585,28 +567,26 @@ function Addon:UpdateFrames()
 	if(Addon.db.global.AnchorPoint == ANCHOR_TOP) then
 		ExperiencerFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -yo1);
 		ExperiencerFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPRIGHT", 0, -yo2);
-		ExperiencerBarText:SetPoint("TOP", ExperiencerFrame, "TOP", 0, -yo3);
+		ExperiencerBarText:SetPoint("TOP", ExperiencerFrameBars, "TOP", 0, -yo3);
 		
-		ExperiencerFrameBars.visual:SetPoint("BOTTOMLEFT", ExperiencerFrame, "BOTTOMLEFT", 4, 6 + visualizerPad);
-		ExperiencerFrameBars.visual:SetPoint("TOPRIGHT", ExperiencerFrame, "TOPRIGHT", -4, -2);
+		ExperiencerFrameBars.visual:SetPoint("BOTTOMLEFT", ExperiencerFrameBars, "BOTTOMLEFT", 4, 6 + visualizerPad);
+		ExperiencerFrameBars.visual:SetPoint("TOPRIGHT", ExperiencerFrameBars, "TOPRIGHT", -4, -2);
 		
 	elseif(Addon.db.global.AnchorPoint == ANCHOR_BOTTOM) then
 		ExperiencerFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, yo1);
 		ExperiencerFrame:SetPoint("TOPRIGHT", UIParent, "BOTTOMRIGHT", 0, yo2);
-		ExperiencerBarText:SetPoint("BOTTOM", ExperiencerFrame, "BOTTOM", 0, yo3);
+		ExperiencerBarText:SetPoint("BOTTOM", ExperiencerFrameBars, "BOTTOM", 0, yo3);
 		
-		ExperiencerFrameBars.visual:SetPoint("BOTTOMLEFT", ExperiencerFrame, "BOTTOMLEFT", 4, 2);
-		ExperiencerFrameBars.visual:SetPoint("TOPRIGHT", ExperiencerFrame, "TOPRIGHT", -4, -6 - visualizerPad);
+		ExperiencerFrameBars.visual:SetPoint("BOTTOMLEFT", ExperiencerFrameBars, "BOTTOMLEFT", 4, 2);
+		ExperiencerFrameBars.visual:SetPoint("TOPRIGHT", ExperiencerFrameBars, "TOPRIGHT", -4, -6 - visualizerPad);
 	end
 	
 	local _, class = UnitClass("player");
 	local c = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class];
 	
-	ExperiencerFrameBars.main:SetStatusBarColor(c.r, c.g, c.b, 0.35);
+	ExperiencerFrameBars.main:SetStatusBarColor(c.r, c.g, c.b, 0.45);
 	ExperiencerFrameBars.main:SetAnimatedTextureColors(c.r, c.g, c.b);
-	ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.001;
-	
-	ExperiencerFrameBars.main:SetAnimatedValues(50, 0, 1000);
+	ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.01;
 	
 	-- /run ExperiencerFrameBars.main:SetAnimatedValues(140, 0, 1000)
 	
@@ -617,45 +597,22 @@ function Addon:UpdateFrames()
 end
 
 function Addon:ShowBar()
+	Addon.IsVisible = true;
 	ExperiencerFrameBars:Show();
 	
-	if(self.db.char.StickyText) then
-		ExperiencerBarText:Show();
-	end
+	ExperiencerBarText:Show();
 	
-	if(not Addon.IsVisible) then
-		Addon:RefreshBar(true);
-	end
-	
-	Addon.IsVisible = true;
-end
-
-function ExperiencerBar_OnShow(self)
 	Addon:RefreshBar(true);
 end
 
 function Addon:HideBar()
-	ExperiencerFrameBars:Hide();
-	ExperiencerBarText:Hide();
-	
 	Addon.IsVisible = false;
-end
-
-function Addon:ToggleVisibility(visible)
-	Addon.IsVisible = visible or (not Addon.IsVisible);
-	
-	if(visible) then
-		Addon:ShowBar();
-	else
-		Addon:HideBar();
-	end
+	ExperiencerFrameBars:Hide();
 end
 
 function Addon:SetMode(new_mode)
 	self.db.char.Mode = new_mode;
-	
 	Addon:UpdateFrames();
-	Addon:ToggleVisibility(true);
 end
 
 function Addon:GetProgressColor(progress)
@@ -677,17 +634,21 @@ end
 
 function Addon:UpdateActiveBar()
 	local module = Addon:GetActiveModule();
+	if(not module) then return end
 	
 	local data = module:GetBarData();
+	ASD = data;
 	
-	ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max);
+	ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
 	
 	ExperiencerFrameBars.color:SetMinMaxValues(data.min, data.max);
-	ExperiencerFrameBars.color:SetValue(data.current);
+	-- ExperiencerFrameBars.color:SetValue(data.current);
+	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetAnimatedValue());
 	
 	if(data.rested) then
 		ExperiencerFrameBars.rested:Show();
 		ExperiencerFrameBars.rested:SetMinMaxValues(data.min, data.max);
+		ExperiencerFrameBars.rested:SetValue(data.rested);
 	else
 		ExperiencerFrameBars.rested:Hide();
 	end
@@ -695,12 +656,17 @@ function Addon:UpdateActiveBar()
 	if(data.visual) then
 		ExperiencerFrameBars.visual:Show();
 		ExperiencerFrameBars.visual:SetMinMaxValues(data.min, data.max);
+		ExperiencerFrameBars.visual:SetValue(data.visual);
 	else
 		ExperiencerFrameBars.visual:Hide();
 	end
 	
-	local text = module:GetText();
-	ExperiencerBarText:SetText(text or "<Error: no module text>");
+	ExperiencerFrameBars.rested:Hide();
+	ExperiencerFrameBars.color:Hide();
+	ExperiencerFrameBars.visual:Hide();
+	
+	local text = module:GetText() or "<Error: no module text>";
+	ExperiencerBarText:SetText(text);
 end
 
 
@@ -879,7 +845,7 @@ function Experiencer_OnUpdate(self, elapsed)
 	
 	if(Addon.db and Addon.db.char.Mode == EXPERIENCER_MODE_XP and self.elapsed >= 2.0) then
 		self.elapsed = 0;
-		Addon:RefreshBar();
+		-- Addon:RefreshBar();
 	end
 	
 	-- local lastPaused = Addon.Session.Paused;

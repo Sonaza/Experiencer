@@ -179,10 +179,11 @@ end
 
 function module:GetBarData()
 	local data    = {};
+	data.level    = UnitLevel("player");
 	data.min  	  = 0;
 	data.max  	  = UnitXPMax("player");
 	data.current  = UnitXP("player");
-	data.rested   = GetXPExhaustion() or 0;
+	data.rested   = data.current + (GetXPExhaustion() or 0);
 	
 	local completeXP, incompleteXP, totalXP = module:CalculateQuestLogXP();
 	local questXP = completeXP;
@@ -192,7 +193,7 @@ function module:GetBarData()
 	end
 	
 	if(self.db.global.QuestXP.ShowVisualizer) then
-		data.visual   = questXP;
+		data.visual = data.current + questXP;
 	end
 	
 	return data;
@@ -368,15 +369,15 @@ function module:CalculateQuestLogXP()
 	return completeXP * multiplier, incompleteXP * multiplier, (completeXP + incompleteXP) * multiplier;
 end
 
-function Addon:QUEST_LOG_UPDATE()
+function module:QUEST_LOG_UPDATE()
 	Addon:RefreshBar();
 end
 
-function Addon:UNIT_INVENTORY_CHANGED()
+function module:UNIT_INVENTORY_CHANGED()
 	Addon:RefreshBar();
 end
 
-function Addon:CHAT_MSG_SYSTEM(event, msg)
+function module:CHAT_MSG_SYSTEM(event, msg)
 	if(msg:match(QUEST_COMPLETED_PATTERN) ~= nil) then
 		Addon.QuestCompleted = true;
 		return;
@@ -415,7 +416,7 @@ function Addon:CHAT_MSG_SYSTEM(event, msg)
 	end
 end
 
-function Addon:PLAYER_XP_UPDATE(event)
+function module:PLAYER_XP_UPDATE(event)
 	local current_xp = UnitXP("player");
 	local max_xp = UnitXPMax("player");
 	
@@ -440,13 +441,13 @@ function Addon:PLAYER_XP_UPDATE(event)
 	Addon.GainUpdateTimer = 0;
 end
 
-function Addon:UPDATE_EXHAUSTION()
+function module:UPDATE_EXHAUSTION()
 	if(self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
 	Addon:RefreshBar();
 end
 
-function Addon:PLAYER_LEVEL_UP(event, level)
+function module:PLAYER_LEVEL_UP(event, level)
 	if(not self.db or self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
 	if(Addon:IsPlayerMaxLevel(level)) then
