@@ -8,7 +8,11 @@ local ADDON_NAME, Addon = ...;
 local _;
 
 local module = {};
-Addon:RegisterModule("honor", module);
+module.id       = "honor";
+module.name     = "Honor";
+module.order    = 3;
+
+Addon:RegisterModule(module.id, module);
 
 module.recentReputations = {};
 

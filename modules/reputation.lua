@@ -8,7 +8,11 @@ local ADDON_NAME, Addon = ...;
 local _;
 
 local module = {};
-Addon:RegisterModule("reputation", module);
+module.id       = "reputation";
+module.name     = "Reputation";
+module.order    = 2;
+
+Addon:RegisterModule(module.id, module);
 
 module.savedvars = {
 	char = {
@@ -85,6 +89,36 @@ function module:GetText()
 	return table.concat(outputText, "  ");
 end
 
+function module:HasChatMessage()
+	return not GetWatchedFactionInfo(), "No watched reputation.";
+end
+
+function module:GetChatMessage()
+	local name, standing, min_rep, max_rep, rep_value, factionID = GetWatchedFactionInfo();
+	
+	local remaining_rep = max_rep - rep_value;
+	local progress = (rep_value - min_rep) / (max_rep - min_rep)
+	
+	local standing_text = "";
+	local friend_text = select(7, GetFriendshipReputation(factionID));
+	
+	if(not friend_text) then
+		standing_text = _G['FACTION_STANDING_LABEL' .. standing];
+	else
+		-- standing_text = friend_standing[standing];
+		standing_text = select(7, GetFriendshipReputation(factionID));
+	end
+	
+	return string.format("%s with %s: %s/%s (%d%%) with %s to go",
+		standing_text,
+		name,
+		BreakUpLargeNumbers(rep_value - min_rep),
+		BreakUpLargeNumbers(max_rep - min_rep),
+		progress * 100,
+		BreakUpLargeNumbers(remaining_rep)
+	);
+end
+
 function module:GetBarData()
 	local data    = {};
 	
@@ -100,7 +134,225 @@ function module:GetBarData()
 end
 
 function module:GetOptionsMenu()
+	local menudata = {
+		{
+			text = "Reputation Options",
+			isTitle = true,
+			notCheckable = true,
+		},
+		{
+			text = "Show gained reputation",
+			func = function() self.db.global.ShowGainedRep = not self.db.global.ShowGainedRep; module:MarkDirty(); end,
+			checked = function() return self.db.global.ShowGainedRep; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Auto watch most recent reputation",
+			func = function() self.db.global.AutoWatch.Visible = not self.db.global.AutoWatch.Visible; end,
+			checked = function() return self.db.global.AutoWatch.Visible; end,
+			hasArrow = true,
+			isNotRadio = true,
+			menuList = {
+				{
+					text = "Ignore guild reputation",
+					func = function() self.db.global.AutoWatch.IgnoreGuild = not self.db.global.AutoWatch.IgnoreGuild; end,
+					checked = function() return self.db.global.AutoWatch.IgnoreGuild; end,
+					isNotRadio = true,
+				},
+				{
+					text = "Ignore bodyguard reputations",
+					func = function() self.db.global.AutoWatch.IgnoreBodyguard = not self.db.global.AutoWatch.IgnoreBodyguard; end,
+					checked = function() return self.db.global.AutoWatch.IgnoreBodyguard; end,
+					isNotRadio = true,
+				},
+				{
+					text = "Ignore inactive reputations",
+					func = function() self.db.global.AutoWatch.IgnoreInactive = not self.db.global.AutoWatch.IgnoreInactive; end,
+					checked = function() return self.db.global.AutoWatch.IgnoreInactive; end,
+					isNotRadio = true,
+				},
+			},
+		},
+		{
+			text = "Set Watched Faction",
+			func = function() ToggleCharacter("ReputationFrame"); end,
+			hasArrow = true,
+			notCheckable = true,
+			menuList = module:GetReputationsMenu(),
+		},
+	};
 	
+	return menudata;
+end
+
+------------------------------------------
+
+
+
+function Addon:GetReputationID(faction_name)
+	if(faction_name == GUILD) then
+		return 2;
+	end
+	
+	local numFactions = GetNumFactions();
+	local index = 1;
+	while index <= numFactions do
+		local name, _, _, _, _, _, _, _, isHeader, isCollapsed, _, _, _, factionID = GetFactionInfo(index);
+		
+		if(isHeader and isCollapsed) then
+			ExpandFactionHeader(index);
+			numFactions = GetNumFactions();
+		end
+		
+		if(name == faction_name) then return index, factionID end
+			
+		index = index + 1;
+	end
+	
+	return nil
+end
+
+function module:GetRecentReputationsMenu()
+	local factions = {
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
+			text = "Recent Reputations", isTitle = true, notCheckable = true,
+		},
+	};
+		
+	local recentReps = 0;
+	
+	for name, data in pairs(module.recentReputations) do
+		local faction_index = module:GetReputationID(name);
+		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(faction_index);
+		local friend_level = select(7, GetFriendshipReputation(factionID));
+		local standing_text = "";
+		
+		if(not isHeader or hasRep) then
+			if(friend_level) then
+				standing_text = friend_level;
+			else
+				standing_text = module:GetStandingColorText(standing)
+			end
+		end
+		
+		tinsert(factions, {
+			text = string.format("%s (%s)  +%s rep this session", name, standing_text, BreakUpLargeNumbers(data.amount)),
+			func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+			checked = function() return isWatched end,
+		})
+		
+		recentReps = recentReps + 1;
+	end
+	
+	if(recentReps == 0) then
+		return false;
+	end
+	
+	return factions;
+end
+
+function module:GetReputationsMenu()
+	local factions = {
+		{
+			text = "Choose Category",
+			isTitle = true,
+			notCheckable = true,
+		},
+	};
+	
+	local previous, current = nil, nil;
+	local depth = 0;
+	
+	local numFactions = GetNumFactions();
+	local index = 1;
+	while index <= numFactions do
+		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(index);
+		local friend_level = select(7, GetFriendshipReputation(factionID));
+		local standing_text = "";
+		local faction_index = index;
+		
+		if(not isHeader or hasRep) then
+			if(friend_level) then
+				standing_text = friend_level;
+			else
+				standing_text = module:GetStandingColorText(standing)
+			end
+		end
+		
+		if(isHeader and isCollapsed) then
+			ExpandFactionHeader(index);
+			numFactions = GetNumFactions();
+		end
+		
+		if(isHeader and isChild) then -- Second tier header
+			if(depth == 2) then
+				current = previous;
+				previous = nil;
+			end
+			
+			if(not hasRep) then
+				tinsert(current, {
+					text = name,
+					hasArrow = true,
+					notCheckable = true,
+					menuList = {},
+				})
+			else
+				tinsert(current, {
+					text = string.format("%s (%s)", name, standing_text),
+					hasArrow = true,
+					func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+					checked = function() return isWatched; end,
+					menuList = {},
+				})
+			end
+			
+			previous = current;
+			current = current[#current].menuList;
+			tinsert(current, {
+				text = name,
+				isTitle = true,
+				notCheckable = true,
+			})
+			
+			depth = 2
+			
+		elseif(isHeader) then -- First tier header
+			tinsert(factions, {
+				text = name,
+				hasArrow = true,
+				notCheckable = true,
+				menuList = {},
+			})
+			
+			current = factions[#factions].menuList;
+			tinsert(current, {
+				text = name,
+				isTitle = true,
+				notCheckable = true,
+			})
+			
+			depth = 1
+		elseif(not isHeader) then -- First and second tier faction
+			tinsert(current, {
+				text = string.format("%s (%s)", name, standing_text),
+				func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+				checked = function() return isWatched end,
+			})
+		end
+		
+		index = index + 1;
+	end
+	
+	local recent = module:GetRecentReputationsMenu();
+	if(recent ~= false) then
+		for _, data in ipairs(recent) do tinsert(factions, data) end
+	end
+	
+	return factions;
 end
 
 ------------------------------------------
@@ -136,7 +388,7 @@ function module:UPDATE_FACTION(event, ...)
 		set_value = true;
 	end
 	
-	Addon:RefreshBar(set_value);
+	module:MarkDirty(set_value);
 	Addon.GainUpdateTimer = 0;
 end
 

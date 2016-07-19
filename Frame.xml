@@ -1,7 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\FrameXML\UI.xsd">
 
-	<Font name="ExperiencerFont" font="Interface/AddOns/Experiencer/Media/DORISPP.TTF" outline="NORMAL" virtual="true">
+	<Font name="ExperiencerFont" font="Interface\AddOns\Experiencer\Media\DORISPP.TTF" outline="NORMAL" virtual="true">
 		<Shadow>
 			<Offset>
 				<AbsDimension x="0" y="-2"/>
@@ -12,7 +12,7 @@
 			<AbsValue val="10"/>
 		</FontHeight>
 	</Font>
-	<Font name="ExperiencerBigFont" font="Interface/AddOns/Experiencer/Media/DORISPP.TTF" outline="NORMAL" virtual="true">
+	<Font name="ExperiencerBigFont" font="Interface\AddOns\Experiencer\Media\DORISPP.TTF" outline="NORMAL" virtual="true">
 		<Shadow>
 			<Offset>
 				<AbsDimension x="0" y="-2"/>
@@ -29,7 +29,7 @@
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
 			<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-2"/>
 		</Anchors>
-		<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
+		<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture"/>
 		<BarColor r="1" g="1" b="1"/>
 	</StatusBar>
 	
@@ -38,11 +38,11 @@
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
 			<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-2"/>
 		</Anchors>
-		<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
+		<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture"/>
 		<BarColor r="1" g="1" b="1"/>
 	</StatusBar>
 	
-	<Frame name="ExperiencerFrame" parent="UIParent" frameStrata="LOW">
+	<Frame name="ExperiencerFrame" parent="UIParent" frameStrata="HIGH" enableMouse="true">
 		<Anchors>
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="0" y="-1"/>
 			<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="9"/>
@@ -63,64 +63,76 @@
 							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
 							<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-6"/>
 						</Anchors>
-						<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture" alphaMode="ADD"/>
-						<Scripts>
-							<OnLoad>
-								self:SetFrameLevel(ExperiencerFrameBars.rested:GetFrameLevel()+1);
-							</OnLoad>
-						</Scripts>
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
 					</StatusBar>
-					<StatusBar name="$parentColor" parentKey="color" inherits="ExperiencerBarTemplate">
-						<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture"/>
-						<Scripts>
-							<OnLoad>
-								self:SetFrameLevel(ExperiencerFrameBars.visual:GetFrameLevel()+1);
-							</OnLoad>
-						</Scripts>
+					<StatusBar name="$parentGain" parentKey="gain" inherits="ExperiencerBarTemplate">
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
+						<Animations>
+							<AnimationGroup parentKey="fade" setToFinalAlpha="true">
+								<Alpha fromAlpha="0.0" toAlpha="1.0" duration="0.6" order="1" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="1.0" toAlpha="0.0" duration="0.8" order="2" smoothing="IN_OUT"/>
+							</AnimationGroup>
+						</Animations>
 					</StatusBar>
 					<StatusBar name="$parentMain" parentKey="main" inherits="ExperiencerAnimatedBarTemplate">
-						<BarTexture file="Interface/AddOns/Experiencer/Media/BarTexture" alphaMode="ADD"/>
-						<Scripts>
-							<OnLoad>
-								self:SetFrameLevel(ExperiencerFrameBars.color:GetFrameLevel()+1);
-							</OnLoad>
-						</Scripts>
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture"/>
+						<Frames>
+							<Frame name="$parentSpark" parentKey="spark">
+								<Size x="9" y="24"/>
+								<Anchors>
+									<Anchor center="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/>
+								</Anchors>
+								<Layers>
+									<Layer level="ARTWORK">
+										<Texture setAllPoints="true" file="Interface\UNITPOWERBARALT\DeathwingBlood_Horizontal_Spark" alphaMode="ADD">
+											<Color r="1" g="1" b="1"/>
+										</Texture>
+									</Layer>
+								</Layers>
+								<Animations>
+									<AnimationGroup parentKey="fade" setToFinalAlpha="true">
+										<Alpha fromAlpha="0.0" toAlpha="1.0" duration="0.2" order="1" smoothing="IN"/>
+										<Alpha fromAlpha="1.0" toAlpha="1.0" duration="0.5" order="2" smoothing="IN_OUT"/>
+										<Alpha fromAlpha="1.0" toAlpha="0.0" duration="0.5" order="3" smoothing="OUT"/>
+									</AnimationGroup>
+								</Animations>
+							</Frame>
+						</Frames>
+					</StatusBar>
+					<StatusBar name="$parentColor" parentKey="color" inherits="ExperiencerBarTemplate">
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
 					</StatusBar>
 					
-					<Frame>
-						<Size x="1500" y="10"/>
+					<Frame name="$parentLabel">
+						<Size x="1500" y="15"/>
 						<Anchors>
-							<Anchor point="BOTTOM" relativePoint="BOTTOM" x="0" y="0"/>
+							<Anchor point="BOTTOM" relativePoint="BOTTOM" relativeTo="$parent" x="0" y="50"/>
 						</Anchors>
 						<Layers>
 							<Layer level="ARTWORK">
-								<FontString name="ExperiencerBarText" inherits="ExperiencerFont" hidden="true">
-									<Size x="1500" y="10"/>
+								<FontString name="ExperiencerBarText" inherits="ExperiencerFont" justifyH="CENTER">
+									<Size x="1500" y="12"/>
 									<Anchors>
-										<Anchor point="BOTTOM" x="0" y="3"/>
+										<Anchor point="CENTER" relativePoint="CENTER" relativeTo="$parent" x="0" y="0"/>
 									</Anchors>
 								</FontString>
 							</Layer>
 						</Layers>
-						<Scripts>
-							<OnLoad>
-								self:SetFrameLevel(ExperiencerFrameBars.main:GetFrameLevel()+2);
-							</OnLoad>
-						</Scripts>
 					</Frame>
 				</Frames>
 			</Frame>
 		</Frames>
-		
 		<Scripts>
 			<OnLoad>
-				-- self:EnableMouse(true);
-				-- self:RegisterForClicks("LeftButton", "RightButton", "MiddleButton");
+				self:EnableMouseWheel(true);
+				self:EnableMouse(true);
+				--self:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp");
 			</OnLoad>
-			<OnMouseDown function="Experiencer_OnMouseDown"/>
-			<OnUpdate function="Experiencer_OnUpdate"/>
 			<OnEnter function="Experiencer_OnEnter"/>
 			<OnLeave function="Experiencer_OnLeave"/>
+			<OnMouseDown function="Experiencer_OnMouseDown"/>
+			<OnMouseWheel function="Experiencer_OnMouseWheel"/>
+			<OnUpdate function="Experiencer_OnUpdate"/>
 		</Scripts>
 	</Frame>
 	

@@ -4,7 +4,7 @@
 ## Author: Sonaza
 ## Version: 2.0.0
 ## OptionalDeps: Ace3
-## SavedVariables: ExperiencerDB
+## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
@@ -16,11 +16,9 @@ libs\AceHook-3.0\AceHook-3.0.xml
 #@end-no-lib-strip@
 
 core.lua
-
 modules\experience.lua
 modules\reputation.lua
 modules\artifact.lua
 modules\honor.lua
-
 events.lua
 Frame.xml

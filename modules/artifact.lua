@@ -8,9 +8,11 @@ local ADDON_NAME, Addon = ...;
 local _;
 
 local module = {};
-Addon:RegisterModule("artifact", module);
+module.id       = "artifact";
+module.name     = "Artifact";
+module.order    = 4;
 
-module.recentReputations = {};
+Addon:RegisterModule(module.id, module);
 
 function module:Initialize()
 	
