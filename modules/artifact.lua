@@ -25,7 +25,10 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	return not HasArtifactEquipped();
+	-- return not HasArtifactEquipped();
+	
+	-- If player doesn't have Legion on their account or isn't high level enough
+	return GetExpansionLevel() < 6 or UnitLevel("player") < 100; 
 end
 
 function module:Update(elapsed)
@@ -67,7 +70,7 @@ function module:GetText()
 end
 
 function module:HasChatMessage()
-	return true, "Derp.";
+	return not HasArtifactEquipped(), "No artifact equipped.";
 end
 
 function module:GetChatMessage()
@@ -90,15 +93,21 @@ end
 function module:GetBarData()
 	local data    = {};
 	
-	local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
-	
-	data.level    = pointsSpent;
+	data.level    = 0;
 	data.min  	  = 0;
-	data.max  	  = xpForNextPoint;
-	data.current  = artifactXP;
+	data.max  	  = 1;
+	data.current  = 0;
 	data.rested   = nil;
 	data.visual   = nil;
+	
+	if(HasArtifactEquipped()) then
+		local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
+		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+		
+		data.level    = pointsSpent;
+		data.max  	  = xpForNextPoint;
+		data.current  = artifactXP;
+	end
 	
 	return data;
 end
