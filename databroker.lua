@@ -12,7 +12,7 @@ local LibDataBroker = LibStub("LibDataBroker-1.1");
 local settings = {
 	type = "data source",
 	label = "Experiencer",
-	text = "",
+	text = "Experiencer Text Display",
 	icon = "Interface\\Icons\\Ability_Paladin_EmpoweredSealsRighteous",
 	OnClick = function(frame, button)
 		if(button == "RightButton") then
@@ -25,9 +25,6 @@ function Addon:InitializeDataBroker()
 	Addon.BrokerModule = LibDataBroker:NewDataObject("Experiencer", settings);
 end
 
-function Addon:UpdateDataBroker()
-	local module = Addon:GetActiveModule();
-	if(not module) then return end
-	
-	Addon.BrokerModule.text = module:GetText();
+function Addon:UpdateDataBrokerText(text)
+	Addon.BrokerModule.text = text;
 end

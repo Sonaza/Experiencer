@@ -171,8 +171,8 @@ function module:GetOptionsMenu()
 		},
 		{
 			text = "Auto watch most recent reputation",
-			func = function() self.db.global.AutoWatch.Visible = not self.db.global.AutoWatch.Visible; end,
-			checked = function() return self.db.global.AutoWatch.Visible; end,
+			func = function() self.db.global.AutoWatch.Enabled = not self.db.global.AutoWatch.Enabled; end,
+			checked = function() return self.db.global.AutoWatch.Enabled; end,
 			hasArrow = true,
 			isNotRadio = true,
 			menuList = {
@@ -211,6 +211,7 @@ function module:GetOptionsMenu()
 		tinsert(menudata, data);
 	end
 	
+	tinsert(menudata, { text = "", isTitle = true, notCheckable = true, });
 	tinsert(menudata, {
 		text = "Open reputations panel",
 		func = function() ToggleCharacter("ReputationFrame"); end,
@@ -415,7 +416,7 @@ function module:UPDATE_FACTION(event, ...)
 	module:Refresh(instant);
 end
 
-local reputationPattern = FACTION_STANDING_INCREASED:gsub("%%s", "(.-)"):gsub("%%d", "(%d*)%");
+local reputationPattern = FACTION_STANDING_INCREASED:gsub("%%s", "(.-)"):gsub("%%d", "(%%d*)%%");
 
 function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	local reputation, amount = message:match(reputationPattern);
@@ -432,7 +433,8 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	module.recentReputations[reputation].amount = module.recentReputations[reputation].amount + amount;
 	
 	if(self.db.global.AutoWatch.Enabled) then
-		if(module.Tracked ~= reputation) then
+		local name = GetWatchedFactionInfo();
+		if(name ~= reputation) then
 			module:UpdateAutoWatch(reputation);
 		end
 	end

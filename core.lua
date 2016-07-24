@@ -10,11 +10,15 @@ _G[ADDON_NAME] = Addon;
 
 local AceDB = LibStub("AceDB-3.0");
 
+local TEXT_VISIBILITY_HIDE      = 1;
+local TEXT_VISIBILITY_HOVER     = 2;
+local TEXT_VISIBILITY_ALWAYS    = 3;
+
 function Addon:OnInitialize()
 	local defaults = {
 		char = {
 			Visible 	    = true,
-			StickyText      = false,
+			TextVisibility  = TEXT_VISIBILITY_ALWAYS,
 			ActiveModule    = "experience",
 		},
 		
@@ -221,7 +225,7 @@ end
 function Addon:ShowBar()
 	ExperiencerFrameBars:Show();
 	
-	if(Addon.db.char.StickyText) then
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
 		ExperiencerBarTextFrame:Show();
 	end
 end
@@ -375,7 +379,7 @@ function Addon:UpdateText()
 	local text = module:GetText() or "<Error: no module text>";
 	ExperiencerBarText:SetText(text);
 	
-	Addon:UpdateDataBroker();
+	Addon:UpdateDataBrokerText(text);
 end
 
 local function roundnum(num, idp)
@@ -413,6 +417,26 @@ function Addon:SendModuleChatMessage()
 	end
 end
 
+function Addon:ToggleTextVisilibity(visibility, noAnimation)
+	if(visibility) then
+		self.db.char.TextVisibility = visibility;
+	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+		self.db.char.TextVisibility = TEXT_VISIBILITY_ALWAYS;
+	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+		self.db.char.TextVisibility = TEXT_VISIBILITY_HOVER;
+	end
+	
+	if(not noAnimation) then
+		if(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+			ExperiencerBarTextFrame.fadeout:Stop();
+			ExperiencerBarTextFrame.fadein:Play();
+		else
+			ExperiencerBarTextFrame.fadein:Stop();
+			ExperiencerBarTextFrame.fadeout:Play();
+		end
+	end
+end
+
 function Experiencer_OnMouseDown(self, button)
 	CloseMenus();
 	
@@ -424,8 +448,8 @@ function Experiencer_OnMouseDown(self, button)
 		end
 	end
 	
-	if(button == "MiddleButton") then
-		Addon.db.char.StickyText = not Addon.db.char.StickyText;
+	if(button == "MiddleButton" and Addon.db.char.TextVisibility ~= TEXT_VISIBILITY_HIDE) then
+		Addon:ToggleTextVisilibity(nil, true);
 	end
 	
 	if(button == "RightButton") then
@@ -481,6 +505,7 @@ end
 
 function Addon:OpenContextMenu(anchorFrame)
 	if(InCombatLockdown()) then return end
+	anchorFrame = anchorFrame or ExperiencerFrameBars.main;
 	
 	if(not Addon.ContextMenu) then
 		Addon.ContextMenu = CreateFrame("Frame", "ExperiencerContextMenuFrame", UIParent, "UIDropDownMenuTemplate");
@@ -535,22 +560,33 @@ function Addon:OpenContextMenu(anchorFrame)
 			end,
 			checked = function() return self.db.char.FlashLevelUp; end,
 			isNotRadio = true,
+			tooltipTitle = "Flash when able to level up",
+			tooltipText = "Used for Artifact and Honor",
+			tooltipOnButton = 1,
 		},
 		{
-			text = "Keep text visible",
+			text = "Always show text",
 			func = function()
-				self.db.char.StickyText = not self.db.char.StickyText;
-				if(self.db.char.StickyText) then
-					ExperiencerBarTextFrame.fadeout:Stop();
-					ExperiencerBarTextFrame.fadein:Play();
-				else
-					ExperiencerBarTextFrame.fadein:Stop();
-					ExperiencerBarTextFrame.fadeout:Play();
-				end
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_ALWAYS);
 				Addon:OpenContextMenu();
 			end,
-			checked = function() return self.db.char.StickyText; end,
-			isNotRadio = true,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS; end,
+		},
+		{
+			text = "Show text on hover",
+			func = function()
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_HOVER);
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER; end,
+		},
+		{
+			text = "Always hide text",
+			func = function()
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_HIDE);
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_HIDE; end,
 		},
 		{
 			text = " ", isTitle = true, notCheckable = true,
@@ -692,14 +728,14 @@ function Addon:OpenContextMenu(anchorFrame)
 end
 
 function Experiencer_OnEnter(self)
-	if(not Addon.db.char.StickyText) then
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		ExperiencerBarTextFrame.fadeout:Stop();
 		ExperiencerBarTextFrame.fadein:Play();
 	end
 end
 
 function Experiencer_OnLeave(self)
-	if(not Addon.db.char.StickyText) then
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		ExperiencerBarTextFrame.fadein:Stop();
 		ExperiencerBarTextFrame.fadeout:Play();
 	end

@@ -22,10 +22,10 @@ Experiencer also adds a DataBroker module that displays current text if you wish
 
 Experiencer options can be accessed by right clicking the bar or the DataBroker module. In order to make things smoother there are a few useful shortcuts.
 
-* Shift left-click pastes current statistics to chat editbox. Shift control left-click for quick paste.
 * Control left-click toggles bar visiblity. There will always be a slightly translucent black bar where the bar is anchored.
-* Middle click toggles text visibility.
+* Middle click toggles text visibility if text is not set to be always hidden.
 * Holding control while scrolling with mouse wheel lets you browse through available bars in following order: experience, reputation, artifact power and honor.
+* Shift left-click pastes current statistics to chat editbox. Shift control left-click for quick paste.
 
 ## Dependencies
 Experiencer uses Ace3 and LibDataBroker which are included in the /libs directory.
