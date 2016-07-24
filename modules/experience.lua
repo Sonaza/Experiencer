@@ -594,16 +594,12 @@ function module:PLAYER_XP_UPDATE(event)
 end
 
 function module:UPDATE_EXHAUSTION()
-	if(self.db.char.Mode ~= EXPERIENCER_MODE_XP) then return end
-	
 	module:Refresh();
 end
 
 function module:PLAYER_LEVEL_UP(event, level)
-	if(not self.db or self.db.char.Mode ~= EXPERIENCER_MODE_XP) then return end
-	
 	if(module:IsPlayerMaxLevel(level)) then
-		Addon:SetMode(EXPERIENCER_MODE_REP);
+		Addon:CheckDisabledStatus();
 		
 		module:UnregisterEvent("CHAT_MSG_SYSTEM");
 		module:UnregisterEvent("PLAYER_XP_UPDATE");

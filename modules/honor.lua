@@ -10,7 +10,7 @@ local _;
 local module = Addon:NewModule("honor");
 
 module.name     = "Honor";
-module.order    = 3;
+module.order    = 4;
 
 local HONOR_UNLOCK_LEVEL = 110;
 

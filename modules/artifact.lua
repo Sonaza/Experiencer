@@ -10,7 +10,7 @@ local _;
 local module = Addon:NewModule("artifact");
 
 module.name     = "Artifact";
-module.order    = 4;
+module.order    = 3;
 
 module.levelUpRequiresAction = true;
 

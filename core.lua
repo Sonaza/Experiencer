@@ -49,15 +49,21 @@ function Addon:OnEnable()
 	local newModule = Addon:FindActiveModule(currentIndex, 1);
 	Addon.db.char.ActiveModule = newModule.id;
 	
+	Addon:InitializeDataBroker();
+	
 	Addon:UpdateBars();
 	Addon:UpdateText();
 	
 	Addon:UpdateVisiblity();
 end
 
+function Addon:IsBarVisible()
+	return self.db.char.Visible;
+end
+
 Addon.modules           = {};
 Addon.orderedModules    = {};
-Addon.eventframes = {};
+Addon.eventframes       = {};
 
 setmetatable(Addon.modules, {
 	__newindex = function(self, moduleID, module)
@@ -129,10 +135,6 @@ end
 function Addon:RefreshModule(module, instant)
 	Addon:UpdateBars(instant);
 	Addon:UpdateText();
-end
-
-function Addon:IsBarEnabled()
-	return self.db.char.Enabled;
 end
 
 function Addon:GetPlayerClassColor()
@@ -372,6 +374,8 @@ function Addon:UpdateText()
 	
 	local text = module:GetText() or "<Error: no module text>";
 	ExperiencerBarText:SetText(text);
+	
+	Addon:UpdateDataBroker();
 end
 
 local function roundnum(num, idp)
@@ -425,7 +429,7 @@ function Experiencer_OnMouseDown(self, button)
 	end
 	
 	if(button == "RightButton") then
-		Addon:OpenContextMenu();
+		Addon:OpenContextMenu(self);
 	end
 end
 
@@ -464,7 +468,18 @@ function Experiencer_OnMouseWheel(self, delta)
 	end
 end
 
-function Addon:OpenContextMenu()
+function Addon:GetAnchors(frame)
+	local B, T = "BOTTOM", "TOP";
+	local x, y = frame:GetCenter();
+	
+	if(y < _G.GetScreenHeight() / 2) then
+		return B, T, 1;
+	else
+		return T, B, -1;
+	end
+end
+
+function Addon:OpenContextMenu(anchorFrame)
 	if(InCombatLockdown()) then return end
 	
 	if(not Addon.ContextMenu) then
@@ -664,20 +679,16 @@ function Addon:OpenContextMenu()
 		notCheckable = true,
 	});
 	
-	Addon.ContextMenu:SetPoint("BOTTOM", ExperiencerFrameBars.main, "TOP", 0, 0);
+	Addon.ContextMenu:SetPoint("BOTTOM", anchorFrame, "TOP", 0, 0);
 	EasyMenu(menudata, Addon.ContextMenu, "cursor", 0, 0, "MENU");
 	
 	local mouseX, mouseY = GetCursorPosition();
 	local scale = UIParent:GetEffectiveScale();
 	
-	local point, yoffset = "BOTTOM", 14;
-	if(Addon.db.global.AnchorPoint == "TOP") then
-		point = "TOP";
-		yoffset = -14;
-	end
+	local point, relativePoint, sign = Addon:GetAnchors(anchorFrame);
 	
 	DropDownList1:ClearAllPoints();
-	DropDownList1:SetPoint(point, ExperiencerFrameBars.main, "CENTER", mouseX / scale - GetScreenWidth() / 2, yoffset);
+	DropDownList1:SetPoint(point, anchorFrame, relativePoint, mouseX / scale - GetScreenWidth() / 2, 5 * sign);
 end
 
 function Experiencer_OnEnter(self)
