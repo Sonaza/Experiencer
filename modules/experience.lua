@@ -86,21 +86,19 @@ local QUEST_COMPLETED_PATTERN = "^" .. string.gsub(ERR_QUEST_COMPLETE_S, "%%s", 
 local QUEST_EXPERIENCE_PATTERN = "^" .. string.gsub(ERR_QUEST_REWARD_EXP_I, "%%d", "(%%d+)") .. "$";
 
 function module:Initialize()
-	if(not self:IsPlayerMaxLevel()) then
-		self:RegisterEvent("CHAT_MSG_SYSTEM");
+	self:RegisterEvent("CHAT_MSG_SYSTEM");
+
+	self:RegisterEvent("PLAYER_XP_UPDATE");
+	self:RegisterEvent("PLAYER_LEVEL_UP");
 	
-		self:RegisterEvent("PLAYER_XP_UPDATE");
-		self:RegisterEvent("PLAYER_LEVEL_UP");
-		
-		self:RegisterEvent("UNIT_INVENTORY_CHANGED");
-		self:RegisterEvent("QUEST_LOG_UPDATE");
-	else
-		-- self.db.profile.Mode = EXPERIENCER_MODE_REP;
-	end
+	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
+	self:RegisterEvent("QUEST_LOG_UPDATE");
+	
+	module:RestoreSession();
 end
 
 function module:IsDisabled()
-	return false --module:IsPlayerMaxLevel();
+	return module:IsPlayerMaxLevel() or IsXPUserDisabled();
 end
 
 function module:Update(elapsed)
@@ -205,7 +203,7 @@ function module:GetText()
 end
 
 function module:HasChatMessage()
-	return not module:IsPlayerMaxLevel(), "Max level reached.";
+	return not module:IsPlayerMaxLevel() and not IsXPUserDisabled(), "Max level reached.";
 end
 
 function module:GetChatMessage()
@@ -345,15 +343,15 @@ end
 ------------------------------------------
 
 function module:RestoreSession()
-	if(not self.db.profile.Session.Exists) then return end
+	if(not self.db.char.session.Exists) then return end
 	if(not self.db.global.KeepSessionData) then return end
 	if(module:IsPlayerMaxLevel()) then return end
 	
-	local data = self.db.profile.Session;
+	local data = self.db.char.session;
 	
-	module.session.LoginTime 		= module.session.LoginTime - data.Time;
-	module.session.GainedXP = data.TotalXP;
-	module.session.AverageQuestXP 	= module.session.AverageQuestXP;
+	module.session.LoginTime        = module.session.LoginTime - data.Time;
+	module.session.GainedXP         = data.TotalXP;
+	module.session.AverageQuestXP   = module.session.AverageQuestXP;
 	
 	if(module.session.AverageQuestXP > 0) then
 		local remaining_xp = UnitXPMax("player") - UnitXP("player");
@@ -363,23 +361,23 @@ end
 
 function module:ResetSession()
 	module.session = {
-		LoginTime 			= time(),
-		GainedXP 	= 0,
-		LastXP 				= UnitXP("player"),
-		MaxXP 				= UnitXPMax("player"),
+		LoginTime        = time(),
+		GainedXP         = 0,
+		LastXP           = UnitXP("player"),
+		MaxXP            = UnitXPMax("player"),
 		
-		AverageQuestXP		= 0,
-		QuestsToLevel 		= -1,
+		AverageQuestXP   = 0,
+		QuestsToLevel    = -1,
 		
-		Paused = false,
-		PausedTime = 0,
+		Paused           = false,
+		PausedTime       = 0,
 	};
 	
-	self.db.profile.Session = {
-		Exists = false,
-		Time = 0,
-		TotalXP = 0,
-		AverageQuestXP = 0,
+	self.db.char.session = {
+		Exists           = false,
+		Time             = 0,
+		TotalXP          = 0,
+		AverageQuestXP   = 0,
 	};
 end
 
@@ -528,7 +526,8 @@ function module:QUEST_LOG_UPDATE()
 	Addon:UpdateText();
 end
 
-function module:UNIT_INVENTORY_CHANGED()
+function module:UNIT_INVENTORY_CHANGED(event, unit)
+	if(unit ~= "player") then return end
 	module:Refresh();
 end
 
@@ -595,13 +594,13 @@ function module:PLAYER_XP_UPDATE(event)
 end
 
 function module:UPDATE_EXHAUSTION()
-	if(self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
+	if(self.db.char.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
 	module:Refresh();
 end
 
 function module:PLAYER_LEVEL_UP(event, level)
-	if(not self.db or self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
+	if(not self.db or self.db.char.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
 	if(module:IsPlayerMaxLevel(level)) then
 		Addon:SetMode(EXPERIENCER_MODE_REP);

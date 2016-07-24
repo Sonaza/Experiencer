@@ -6,7 +6,6 @@
 
 local ADDON_NAME = ...;
 local Addon = LibStub("AceAddon-3.0"):NewAddon(select(2, ...), ADDON_NAME, "AceEvent-3.0", "AceHook-3.0");
-Addon.callbacks = Addon.callbacks or LibStub("CallbackHandler-1.0"):New(Addon);
 _G[ADDON_NAME] = Addon;
 
 local AceDB = LibStub("AceDB-3.0");
@@ -53,7 +52,6 @@ function Addon:OnEnable()
 	Addon:UpdateText();
 	
 	Addon:UpdateVisiblity();
-	
 end
 
 Addon.modules           = {};
@@ -77,10 +75,6 @@ setmetatable(Addon.modules, {
 	end
 });
 
-local mt = {
-	
-};
-
 function Addon:NewModule(moduleID, module)
 	if(Addon.modules[moduleID]) then
 		error(("Addon:RegisterModule(moduleID[, module]): Module '%s' is already registered."):format(tostring(moduleID)), 2);
@@ -88,8 +82,6 @@ function Addon:NewModule(moduleID, module)
 	end
 	
 	local module = module or {};
-	setmetatable(module, mt);
-	
 	module.id = moduleID;
 	
 	Addon.modules[moduleID] = module;
@@ -351,11 +343,19 @@ function Experiencer_OnMouseDown(self, button)
 	end
 end
 
-function Addon:FindActiveModule(currentIndex, direction)
+function Addon:CheckDisabledStatus()
+	if(Addon:GetActiveModule():IsDisabled()) then
+		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+		Addon.db.char.ActiveModule = Addon:FindActiveModule(currentIndex, 1).id;
+	end
+end
+
+function Addon:FindActiveModule(currentIndex, direction, findNext)
+	findNext = findNext or false;
 	direction = direction or 1;
 	local newIndex = currentIndex;
 	
-	if(Addon.orderedModules[newIndex]:IsDisabled()) then
+	if(Addon.orderedModules[newIndex]:IsDisabled() or findNext) then
 		repeat
 			newIndex = newIndex + direction;
 			if(newIndex > #Addon.orderedModules) then newIndex = 1 end
@@ -370,7 +370,7 @@ function Experiencer_OnMouseWheel(self, delta)
 	if(IsControlKeyDown()) then
 		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
 		
-		local newModule = Addon:FindActiveModule(currentIndex, -delta);
+		local newModule = Addon:FindActiveModule(currentIndex, -delta, true);
 		Addon.db.char.ActiveModule = newModule.id;
 		
 		Addon:UpdateBars(true);

@@ -12,6 +12,8 @@ local module = Addon:NewModule("honor");
 module.name     = "Honor";
 module.order    = 3;
 
+local HONOR_UNLOCK_LEVEL = 110;
+
 module.savedvars = {
 	global = {
 		ShowHonorLevel  = true,
@@ -27,7 +29,7 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	return false --UnitLevel("player") < 110;
+	return UnitLevel("player") < HONOR_UNLOCK_LEVEL;
 end
 
 function module:Update(elapsed)
