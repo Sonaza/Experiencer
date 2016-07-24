@@ -7,22 +7,20 @@
 local ADDON_NAME, Addon = ...;
 local _;
 
-local module = {};
-module.id       = "artifact";
+local module = Addon:NewModule("artifact");
+
 module.name     = "Artifact";
 module.order    = 4;
-
-Addon:RegisterModule(module.id, module);
 
 function module:Initialize()
 	
 end
 
 function module:IsDisabled()
-	return false;
+	return true;
 end
 
-function module:Update()
+function module:Update(elapsed)
 	
 end
 

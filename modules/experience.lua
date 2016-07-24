@@ -7,12 +7,10 @@
 local ADDON_NAME, Addon = ...;
 local _;
 
-local module = {};
-module.id       = "experience";
+local module = Addon:NewModule("experience");
+
 module.name     = "Experience";
 module.order    = 1;
-
-Addon:RegisterModule(module.id, module);
 
 module.savedvars = {
 	char = {
@@ -24,6 +22,7 @@ module.savedvars = {
 		},
 	},
 	global = {
+		ShowRemaining = true,
 		ShowGainedXP = true,
 		ShowHourlyXP = true,
 		ShowTimeToLevel = true,
@@ -39,16 +38,16 @@ module.savedvars = {
 };
 
 module.session = {
-	LoginTime 			= time(),
-	ExperienceGained 	= 0,
-	LastXP 				= UnitXP("player"),
-	MaxXP 				= UnitXPMax("player"),
+	LoginTime       = time(),
+	GainedXP        = 0,
+	LastXP          = UnitXP("player"),
+	MaxXP           = UnitXPMax("player"),
 	
-	QuestsToLevel 		= -1,
-	AverageQuestXP 		= 0,
+	QuestsToLevel   = -1,
+	AverageQuestXP  = 0,
 	
-	Paused 		= false,
-	PausedTime 	= 0,
+	Paused          = false,
+	PausedTime      = 0,
 };
 
 -- Required data for experience module
@@ -101,11 +100,31 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	return false;
+	return false --module:IsPlayerMaxLevel();
 end
 
-function module:Update()
+function module:Update(elapsed)
+	local lastPaused = module.session.Paused;
+	module.session.Paused = UnitIsAFK("player");
 	
+	if(module.session.Paused and lastPaused ~= module.session.Paused) then
+		module:Refresh();
+	elseif(not module.session.Paused and lastPaused ~= module.session.Paused) then
+		module.session.LoginTime = module.session.LoginTime + math.floor(module.session.PausedTime);
+		module.session.PausedTime = 0;
+	end
+	
+	if(module.session.Paused) then
+		module.session.PausedTime = module.session.PausedTime + elapsed;
+	end
+	
+	if(module.db.global.KeepSessionData) then
+		module.db.char.session.Exists = true;
+		
+		module.db.char.session.Time = time() - (module.session.LoginTime + math.floor(module.session.PausedTime));
+		module.db.char.session.TotalXP = module.session.GainedXP;
+		module.db.char.session.AverageQuestXP = module.session.AverageQuestXP;
+	end
 end
 
 function module:GetText()
@@ -118,9 +137,15 @@ function module:GetText()
 	local progress              = current_xp / (max_xp > 0 and max_xp or 1);
 	local progressColor         = Addon:GetProgressColor(progress);
 	
-	tinsert(outputText,
-		string.format("%s%s|r (%s%d|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
-	);
+	if(self.db.global.ShowRemaining) then
+		tinsert(outputText,
+			string.format("%s%s|r (%s%d|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
+		);
+	else
+		tinsert(outputText,
+			string.format("%s%s|r / %s (%s%d|r%%)", progressColor, BreakUpLargeNumbers(current_xp), BreakUpLargeNumbers(max_xp), progressColor, 100 - progress * 100)
+		);
+	end
 	
 	if(rested_xp > 0) then
 		tinsert(outputText,
@@ -128,12 +153,12 @@ function module:GetText()
 		);
 	end
 	
-	if(module.session.ExperienceGained > 0) then
+	if(module.session.GainedXP > 0) then
 		local hourlyXP, timeToLevel = module:CalculateHourlyXP();
 		
 		if(self.db.global.ShowGainedXP) then
 			tinsert(outputText,
-				string.format("+%s |cffffcc00xp|r", BreakUpLargeNumbers(module.session.ExperienceGained))
+				string.format("+%s |cffffcc00xp|r", BreakUpLargeNumbers(module.session.GainedXP))
 			);
 		end
 		
@@ -180,7 +205,7 @@ function module:GetText()
 end
 
 function module:HasChatMessage()
-	return not Addon:IsPlayerMaxLevel(), "Max level reached.";
+	return not module:IsPlayerMaxLevel(), "Max level reached.";
 end
 
 function module:GetChatMessage()
@@ -194,7 +219,7 @@ function module:GetChatMessage()
 	local current_xp_text = Addon:FormatNumber(current_xp);
 	local remaining_xp_text = Addon:FormatNumber(remaining_xp);
 
-	return string.format("Currently level %d with %s/%s (%d%%) %s xp to go (%d%% rested)", 
+	return string.format("Currently level %d at %s/%s (%d%%) with %s xp to go (%d%% rested)", 
 		UnitLevel("player"),
 		current_xp_text,
 		max_xp_text, 
@@ -234,6 +259,52 @@ function module:GetOptionsMenu()
 			notCheckable = true,
 		},
 		{
+			text = "Show remaining XP",
+			func = function() self.db.global.ShowRemaining = true; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowRemaining == true; end,
+		},
+		{
+			text = "Show current and max XP",
+			func = function() self.db.global.ShowRemaining = false; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowRemaining == false; end,
+		},
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
+			text = "Show gained XP",
+			func = function() self.db.global.ShowGainedXP = not self.db.global.ShowGainedXP; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowGainedXP; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show XP per hour",
+			func = function() self.db.global.ShowHourlyXP = not self.db.global.ShowHourlyXP; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowHourlyXP; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show time to level",
+			func = function() self.db.global.ShowTimeToLevel = not self.db.global.ShowTimeToLevel; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowTimeToLevel; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show quests to level",
+			func = function() self.db.global.ShowQuestsToLevel = not self.db.global.ShowQuestsToLevel; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowQuestsToLevel; end,
+			isNotRadio = true,
+		},
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
+			text = "Remember session data",
+			func = function() self.db.global.KeepSessionData = not self.db.global.KeepSessionData; end,
+			checked = function() return self.db.global.KeepSessionData; end,
+			isNotRadio = true,
+		},
+		{
 			text = "Reset session",
 			func = function()
 				module:ResetSession();
@@ -241,39 +312,7 @@ function module:GetOptionsMenu()
 			notCheckable = true,
 		},
 		{
-			text = "Keep session data",
-			func = function() self.db.global.KeepSessionData = not self.db.global.KeepSessionData; end,
-			checked = function() return self.db.global.KeepSessionData; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show gained XP",
-			func = function() self.db.global.ShowGainedXP = not self.db.global.ShowGainedXP; module:MarkDirty(); end,
-			checked = function() return self.db.global.ShowGainedXP; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show XP per hour",
-			func = function() self.db.global.ShowHourlyXP = not self.db.global.ShowHourlyXP; module:MarkDirty(); end,
-			checked = function() return self.db.global.ShowHourlyXP; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show time to level",
-			func = function() self.db.global.ShowTimeToLevel = not self.db.global.ShowTimeToLevel; module:MarkDirty(); end,
-			checked = function() return self.db.global.ShowTimeToLevel; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show quests to level",
-			func = function() self.db.global.ShowQuestsToLevel = not self.db.global.ShowQuestsToLevel; module:MarkDirty(); end,
-			checked = function() return self.db.global.ShowQuestsToLevel; end,
-			isNotRadio = true,
-		},
-		{
-			text = " ",
-			isTitle = true,
-			notCheckable = true,
+			text = " ", isTitle = true, notCheckable = true,
 		},
 		{
 			text = "Quest XP Visualizer",
@@ -282,19 +321,19 @@ function module:GetOptionsMenu()
 		},
 		{
 			text = "Show completed quest XP",
-			func = function() self.db.global.QuestXP.ShowText = not self.db.global.QuestXP.ShowText; module:MarkDirty(); end,
+			func = function() self.db.global.QuestXP.ShowText = not self.db.global.QuestXP.ShowText; module:Refresh(); end,
 			checked = function() return self.db.global.QuestXP.ShowText; end,
 			isNotRadio = true,
 		},
 		{
 			text = "Also add XP from incomplete quests",
-			func = function() self.db.global.QuestXP.AddIncomplete = not self.db.global.QuestXP.AddIncomplete; module:MarkDirty(); end,
+			func = function() self.db.global.QuestXP.AddIncomplete = not self.db.global.QuestXP.AddIncomplete; module:Refresh(); end,
 			checked = function() return self.db.global.QuestXP.AddIncomplete; end,
 			isNotRadio = true,
 		},
 		{
-			text = "Show visualizer bar",
-			func = function() self.db.global.QuestXP.ShowVisualizer = not self.db.global.QuestXP.ShowVisualizer; module:MarkDirty(); end,
+			text = "Display visualizer bar",
+			func = function() self.db.global.QuestXP.ShowVisualizer = not self.db.global.QuestXP.ShowVisualizer; module:Refresh(); end,
 			checked = function() return self.db.global.QuestXP.ShowVisualizer; end,
 			isNotRadio = true,
 		},
@@ -306,24 +345,26 @@ end
 ------------------------------------------
 
 function module:RestoreSession()
-	if(not module:IsPlayerMaxLevel() and self.db.global.KeepSessionData and self.db.profile.Session.Exists) then
-		local data = self.db.profile.Session;
-		
-		module.session.LoginTime 		= module.session.LoginTime - data.Time;
-		module.session.ExperienceGained = data.TotalXP;
-		module.session.AverageQuestXP 	= module.session.AverageQuestXP;
-		
-		if(module.session.AverageQuestXP > 0) then
-			local remaining_xp = UnitXPMax("player") - UnitXP("player");
-			module.session.QuestsToLevel = ceil(remaining_xp / module.session.AverageQuestXP);
-		end
+	if(not self.db.profile.Session.Exists) then return end
+	if(not self.db.global.KeepSessionData) then return end
+	if(module:IsPlayerMaxLevel()) then return end
+	
+	local data = self.db.profile.Session;
+	
+	module.session.LoginTime 		= module.session.LoginTime - data.Time;
+	module.session.GainedXP = data.TotalXP;
+	module.session.AverageQuestXP 	= module.session.AverageQuestXP;
+	
+	if(module.session.AverageQuestXP > 0) then
+		local remaining_xp = UnitXPMax("player") - UnitXP("player");
+		module.session.QuestsToLevel = ceil(remaining_xp / module.session.AverageQuestXP);
 	end
 end
 
 function module:ResetSession()
 	module.session = {
 		LoginTime 			= time(),
-		ExperienceGained 	= 0,
+		GainedXP 	= 0,
 		LastXP 				= UnitXP("player"),
 		MaxXP 				= UnitXPMax("player"),
 		
@@ -343,7 +384,7 @@ function module:ResetSession()
 end
 
 function module:IsPlayerMaxLevel(level)
-	return MAX_PLAYER_LEVEL_TABLE[GetExpansionLevel()] == (level or UnitLevel("player"));
+	return MAX_PLAYER_LEVEL == (level or UnitLevel("player"));
 end
 
 function module:CalculateHourlyXP()
@@ -352,12 +393,12 @@ function module:CalculateHourlyXP()
 	local logged_time = time() - (module.session.LoginTime + math.floor(module.session.PausedTime));
 	local coeff = logged_time / 3600;
 	
-	if(coeff ~= 0 and module.session.ExperienceGained > 0) then
-		hourlyXP = math.ceil(module.session.ExperienceGained / coeff);
+	if(coeff > 0 and module.session.GainedXP > 0) then
+		hourlyXP = math.ceil(module.session.GainedXP / coeff);
 		timeToLevel = (UnitXPMax("player") - UnitXP("player")) / hourlyXP * 3600;
 	end
 	
-	return hourlyXP, timeToLevel
+	return hourlyXP, timeToLevel;
 end
 
 function module:GetGroupType()
@@ -484,11 +525,11 @@ function module:CalculateQuestLogXP()
 end
 
 function module:QUEST_LOG_UPDATE()
-	module:MakeDirty();
+	Addon:UpdateText();
 end
 
 function module:UNIT_INVENTORY_CHANGED()
-	module:MakeDirty();
+	module:Refresh();
 end
 
 function module:CHAT_MSG_SYSTEM(event, msg)
@@ -540,7 +581,7 @@ function module:PLAYER_XP_UPDATE(event)
 		gained = module.session.MaxXP - module.session.LastXP + current_xp;
 	end
 	
-	module.session.ExperienceGained = module.session.ExperienceGained + gained;
+	module.session.GainedXP = module.session.GainedXP + gained;
 	
 	module.session.LastXP = current_xp;
 	module.session.MaxXP = max_xp;
@@ -550,30 +591,27 @@ function module:PLAYER_XP_UPDATE(event)
 		module.session.QuestsToLevel = ceil(remaining_xp / module.session.AverageQuestXP);
 	end
 	
-	module:MakeDirty();
-	
-	Addon.GainUpdateTimer = 0;
+	module:Refresh();
 end
 
 function module:UPDATE_EXHAUSTION()
 	if(self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
-	module:MakeDirty();
+	module:Refresh();
 end
 
 function module:PLAYER_LEVEL_UP(event, level)
 	if(not self.db or self.db.profile.Mode ~= EXPERIENCER_MODE_XP) then return end
 	
-	if(Addon:IsPlayerMaxLevel(level)) then
+	if(module:IsPlayerMaxLevel(level)) then
 		Addon:SetMode(EXPERIENCER_MODE_REP);
 		
-		Addon:UnregisterEvent("QUEST_COMPLETE");
-		Addon:UnregisterEvent("CHAT_MSG_SYSTEM");
-		Addon:UnregisterEvent("PLAYER_XP_UPDATE");
+		module:UnregisterEvent("CHAT_MSG_SYSTEM");
+		module:UnregisterEvent("PLAYER_XP_UPDATE");
 		
-		Addon:UnregisterEvent("UNIT_INVENTORY_CHANGED");
-		Addon:UnregisterEvent("QUEST_LOG_UPDATE");
-		Addon:UnregisterEvent("UNIT_AURA");
+		module:UnregisterEvent("UNIT_INVENTORY_CHANGED");
+		module:UnregisterEvent("QUEST_LOG_UPDATE");
+		module:UnregisterEvent("UNIT_AURA");
 	else
 		module.session.MaxXP = UnitXPMax("player");
 		

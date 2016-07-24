@@ -18,7 +18,7 @@ end
 local hiddenForPetBattle = false;
 
 function Addon:PET_BATTLE_OPENING_START(event)
-	if(Addon.IsVisible) then
+	if(ExperiencerFrameBars:IsVisible()) then
 		hiddenForPetBattle = true;
 		Addon:HideBar();
 	end

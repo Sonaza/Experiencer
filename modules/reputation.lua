@@ -7,19 +7,19 @@
 local ADDON_NAME, Addon = ...;
 local _;
 
-local module = {};
-module.id       = "reputation";
+local module = Addon:NewModule("reputation");
+
 module.name     = "Reputation";
 module.order    = 2;
-
-Addon:RegisterModule(module.id, module);
 
 module.savedvars = {
 	char = {
 		
 	},
 	global = {
+		ShowRemaining = true,
 		ShowGainedRep = true,
+		
 		AutoWatch = {
 			Enabled = false,
 			IgnoreGuild = true,
@@ -50,12 +50,12 @@ function module:IsDisabled()
 	return false;
 end
 
-function module:Update()
+function module:Update(elapsed)
 	
 end
 
 function module:GetText()
-	if(not Addon:HasWatchedReputation()) then
+	if(not module:HasWatchedReputation()) then
 		return "No active watched reputation";
 	end
 	
@@ -66,7 +66,10 @@ function module:GetText()
 	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
 	local remainingReputation = maxReputation - currentReputation;
 	
-	local progress = (currentReputation - minReputation) / (maxReputation - minReputation);
+	local realCurrentReputation = currentReputation - minReputation;
+	local realMaxReputation = maxReputation - minReputation;
+	
+	local progress = realCurrentReputation / realMaxReputation;
 	local color = Addon:GetProgressColor(progress);
 	
 	local standingText = "";
@@ -78,7 +81,15 @@ function module:GetText()
 		standingText = friendLevel;
 	end
 	
-	tinsert(outputText, string.format("%s (%s): %s%s|r (%s%d|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100));
+	if(self.db.global.ShowRemaining) then
+		tinsert(outputText,
+			string.format("%s (%s): %s%s|r (%s%d|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
+		);
+	else
+		tinsert(outputText,
+			string.format("%s (%s): %s%s|r / %s (%s%d|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, 100 - progress * 100)
+		);
+	end
 	
 	if(self.db.global.ShowGainedRep and module.recentReputations[name]) then
 		tinsert(outputText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
@@ -90,7 +101,7 @@ function module:GetText()
 end
 
 function module:HasChatMessage()
-	return not GetWatchedFactionInfo(), "No watched reputation.";
+	return GetWatchedFactionInfo() ~= nil, "No watched reputation.";
 end
 
 function module:GetChatMessage()
@@ -105,7 +116,6 @@ function module:GetChatMessage()
 	if(not friend_text) then
 		standing_text = _G['FACTION_STANDING_LABEL' .. standing];
 	else
-		-- standing_text = friend_standing[standing];
 		standing_text = select(7, GetFriendshipReputation(factionID));
 	end
 	
@@ -120,10 +130,10 @@ function module:GetChatMessage()
 end
 
 function module:GetBarData()
-	local data    = {};
-	
 	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
 	
+	local data    = {};
+	data.level    = standing;
 	data.min  	  = minReputation;
 	data.max  	  = maxReputation;
 	data.current  = currentReputation;
@@ -141,8 +151,21 @@ function module:GetOptionsMenu()
 			notCheckable = true,
 		},
 		{
+			text = "Show remaining reputation",
+			func = function() self.db.global.ShowRemaining = true; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowRemaining == true; end,
+		},
+		{
+			text = "Show current and max reputation",
+			func = function() self.db.global.ShowRemaining = false; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowRemaining == false; end,
+		},
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
 			text = "Show gained reputation",
-			func = function() self.db.global.ShowGainedRep = not self.db.global.ShowGainedRep; module:MarkDirty(); end,
+			func = function() self.db.global.ShowGainedRep = not self.db.global.ShowGainedRep; module:Refresh(); end,
 			checked = function() return self.db.global.ShowGainedRep; end,
 			isNotRadio = true,
 		},
@@ -174,22 +197,32 @@ function module:GetOptionsMenu()
 			},
 		},
 		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
 			text = "Set Watched Faction",
-			func = function() ToggleCharacter("ReputationFrame"); end,
-			hasArrow = true,
+			isTitle = true,
 			notCheckable = true,
-			menuList = module:GetReputationsMenu(),
 		},
 	};
+	
+	local reputationsMenu = module:GetReputationsMenu();
+	for _, data in ipairs(reputationsMenu) do
+		tinsert(menudata, data);
+	end
+	
+	tinsert(menudata, {
+		text = "Open reputations panel",
+		func = function() ToggleCharacter("ReputationFrame"); end,
+		notCheckable = true,
+	});
 	
 	return menudata;
 end
 
 ------------------------------------------
 
-
-
-function Addon:GetReputationID(faction_name)
+function module:GetReputationID(faction_name)
 	if(faction_name == GUILD) then
 		return 2;
 	end
@@ -255,13 +288,7 @@ function module:GetRecentReputationsMenu()
 end
 
 function module:GetReputationsMenu()
-	local factions = {
-		{
-			text = "Choose Category",
-			isTitle = true,
-			notCheckable = true,
-		},
-	};
+	local factions = {};
 	
 	local previous, current = nil, nil;
 	local depth = 0;
@@ -368,7 +395,7 @@ function module:GetStandingColorText(standing)
 		[3] = {r=0.93, g=0.40, b=0.13}, -- unfriendly
 		[4] = {r=1.00, g=1.00, b=0.00}, -- neutral
 		[5] = {r=0.00, g=0.70, b=0.00}, -- friendly
-		[6] = {r=0.00, g=1.00, b=0.00}, -- honoured
+		[6] = {r=0.00, g=1.00, b=0.00}, -- honored
 		[7] = {r=0.00, g=0.60, b=1.00}, -- revered
 		[8] = {r=0.00, g=1.00, b=1.00}, -- exalted
 	}
@@ -377,26 +404,26 @@ function module:GetStandingColorText(standing)
 end
 
 function module:UPDATE_FACTION(event, ...)
-	local set_value = false;
-	
 	local name = GetWatchedFactionInfo();
-	if(name and Addon:IsBarEnabled() and not Addon.IsVisible) then
-		Addon:ShowBar();
-	end
 	
-	if(name ~= Addon.CurrentRep) then
-		set_value = true;
+	local instant = false;
+	if(name ~= module.Tracked) then
+		instant = true;
 	end
+	module.Tracked = name;
 	
-	module:MarkDirty(set_value);
-	Addon.GainUpdateTimer = 0;
+	module:Refresh(instant);
 end
 
+local reputationPattern = FACTION_STANDING_INCREASED:gsub("%%s", "(.-)"):gsub("%%d", "(%d*)%");
+
 function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
-	local reputation, amount = message:match("Reputation with (.-) increased by (%d*)%.");
+	local reputation, amount = message:match(reputationPattern);
+	amount = tonumber(amount) or 0;
+	
 	if(not reputation or not module.recentReputations) then return end
 	
-	if(module.recentReputations[reputation] == nil) then
+	if(not module.recentReputations[reputation]) then
 		module.recentReputations[reputation] = {
 			amount = 0,
 		};
@@ -405,8 +432,8 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	module.recentReputations[reputation].amount = module.recentReputations[reputation].amount + amount;
 	
 	if(self.db.global.AutoWatch.Enabled) then
-		if(Addon.CurrentRep ~= reputation) then
-			Addon:UpdateAutoWatch(reputation);
+		if(module.Tracked ~= reputation) then
+			module:UpdateAutoWatch(reputation);
 		end
 	end
 end
@@ -414,7 +441,7 @@ end
 function module:UpdateAutoWatch(reputation)
 	if(self.db.global.AutoWatch.IgnoreGuild and reputation == GUILD) then return end
 		
-	local factionListIndex, factionID = Addon:GetReputationID(reputation);
+	local factionListIndex, factionID = module:GetReputationID(reputation);
 	if(not factionListIndex) then return end
 	
 	if(self.db.global.AutoWatch.IgnoreInactive and IsFactionInactive(factionListIndex)) then return end

@@ -24,7 +24,7 @@
 		</FontHeight>
 	</Font>
 	
-	<StatusBar name="ExperiencerAnimatedBarTemplate" inherits="AnimatedStatusBarTemplate" virtual="true">
+	<StatusBar name="ExperiencerAnimatedBarTemplate" inherits="AnimatedStatusBarTemplate" enableMouse="false" virtual="true">
 		<Anchors>
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
 			<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-2"/>
@@ -33,7 +33,7 @@
 		<BarColor r="1" g="1" b="1"/>
 	</StatusBar>
 	
-	<StatusBar name="ExperiencerBarTemplate" virtual="true">
+	<StatusBar name="ExperiencerBarTemplate" enableMouse="false" virtual="true">
 		<Anchors>
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
 			<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-2"/>
@@ -43,9 +43,10 @@
 	</StatusBar>
 	
 	<Frame name="ExperiencerFrame" parent="UIParent" frameStrata="HIGH" enableMouse="true">
+		<Size y="10"/>
 		<Anchors>
 			<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="0" y="-1"/>
-			<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="9"/>
+			<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="-1"/>
 		</Anchors>
 		<Layers>
 			<Layer level="BACKGROUND">
@@ -55,22 +56,18 @@
 			</Layer>
 		</Layers>
 		<Frames>
-			<Frame name="$parentBars" parentKey="bars" setAllPoints="true">
+			<Frame name="$parentBars" parentKey="bars" setAllPoints="true" hidden="true">
 				<Frames>
 					<StatusBar name="$parentRested" parentKey="rested" inherits="ExperiencerBarTemplate" hidden="true"/>
 					<StatusBar name="$parentVisual" parentKey="visual" inherits="ExperiencerBarTemplate" hidden="true">
-						<Anchors>
-							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="2" y="2"/>
-							<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-2" y="-6"/>
-						</Anchors>
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStriped" horizTile="true" alphaMode="ADD"/>
 					</StatusBar>
 					<StatusBar name="$parentGain" parentKey="gain" inherits="ExperiencerBarTemplate">
 						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
 						<Animations>
 							<AnimationGroup parentKey="fade" setToFinalAlpha="true">
-								<Alpha fromAlpha="0.0" toAlpha="1.0" duration="0.6" order="1" smoothing="IN_OUT"/>
-								<Alpha fromAlpha="1.0" toAlpha="0.0" duration="0.8" order="2" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="0" toAlpha="1" duration="0.6" order="1" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
 							</AnimationGroup>
 						</Animations>
 					</StatusBar>
@@ -91,9 +88,9 @@
 								</Layers>
 								<Animations>
 									<AnimationGroup parentKey="fade" setToFinalAlpha="true">
-										<Alpha fromAlpha="0.0" toAlpha="1.0" duration="0.2" order="1" smoothing="IN"/>
-										<Alpha fromAlpha="1.0" toAlpha="1.0" duration="0.5" order="2" smoothing="IN_OUT"/>
-										<Alpha fromAlpha="1.0" toAlpha="0.0" duration="0.5" order="3" smoothing="OUT"/>
+										<Alpha fromAlpha="0.5" toAlpha="1" duration="0.2" order="1" smoothing="IN"/>
+										<Alpha fromAlpha="1" toAlpha="1" duration="0.5" order="2" smoothing="IN_OUT"/>
+										<Alpha fromAlpha="1" toAlpha="0.5" duration="0.5" order="3" smoothing="OUT"/>
 									</AnimationGroup>
 								</Animations>
 							</Frame>
@@ -103,11 +100,29 @@
 						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
 					</StatusBar>
 					
-					<Frame name="$parentLabel">
-						<Size x="1500" y="15"/>
+					<Frame name="ExperiencerBarTextFrame" parentKey="textframe" hidden="true">
+						<Size x="1500" y="20"/>
 						<Anchors>
-							<Anchor point="BOTTOM" relativePoint="BOTTOM" relativeTo="$parent" x="0" y="50"/>
+							<Anchor point="BOTTOM" relativePoint="BOTTOM" relativeTo="$parent" x="0" y="0"/>
 						</Anchors>
+						<Animations>
+							<AnimationGroup parentKey="fadein" setToFinalAlpha="true">
+								<Alpha fromAlpha="0" toAlpha="1" duration="0.1" order="1" smoothing="IN_OUT"/>
+								<Scripts>
+									<OnPlay>
+										self:GetParent():Show();
+									</OnPlay>
+								</Scripts>
+							</AnimationGroup>
+							<AnimationGroup parentKey="fadeout" setToFinalAlpha="true">
+								<Alpha fromAlpha="1" toAlpha="0" duration="0.2" order="1" smoothing="IN_OUT"/>
+								<Scripts>
+									<OnFinished>
+										self:GetParent():Hide();
+									</OnFinished>
+								</Scripts>
+							</AnimationGroup>
+						</Animations>
 						<Layers>
 							<Layer level="ARTWORK">
 								<FontString name="ExperiencerBarText" inherits="ExperiencerFont" justifyH="CENTER">
@@ -124,9 +139,8 @@
 		</Frames>
 		<Scripts>
 			<OnLoad>
-				self:EnableMouseWheel(true);
 				self:EnableMouse(true);
-				--self:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp");
+				self:EnableMouseWheel(true);
 			</OnLoad>
 			<OnEnter function="Experiencer_OnEnter"/>
 			<OnLeave function="Experiencer_OnLeave"/>
