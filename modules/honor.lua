@@ -33,7 +33,11 @@ function module:IsDisabled()
 end
 
 function module:Update(elapsed)
-	
+	if(not CanPrestige()) then
+		module.levelUpRequiresAction = false;
+	else
+		module.levelUpRequiresAction = true;
+	end
 end
 
 function module:GetText()

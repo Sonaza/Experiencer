@@ -19,8 +19,9 @@ function Addon:OnInitialize()
 		},
 		
 		global = {
-			AnchorPoint	= "BOTTOM",
-			BigBars = false,
+			AnchorPoint	    = "BOTTOM",
+			BigBars         = false,
+			FlashLevelUp    = true,
 			
 			Color = {
 				UseClassColor = true,
@@ -151,6 +152,16 @@ function Addon:GetBarColor()
 	end
 end
 
+local FrameLevels = {
+	"ExperiencerFrameBarsRested",
+	"ExperiencerFrameBarsVisual",
+	"ExperiencerFrameBarsChange",
+	"ExperiencerFrameBarsMain",
+	"ExperiencerFrameBarsColor",
+	"ExperiencerFrameBarsHighlight",
+	"ExperiencerBarTextFrame",
+};
+
 function Addon:UpdateFrames()
 	if(not Addon.db.global.BigBars) then
 		ExperiencerFrame:SetHeight(10);
@@ -174,18 +185,22 @@ function Addon:UpdateFrames()
 	
 	ExperiencerFrameBars.main:SetStatusBarColor(c.r, c.g, c.b);
 	ExperiencerFrameBars.main:SetAnimatedTextureColors(c.r, c.g, c.b);
-	ExperiencerFrameBars.main.accumulationTimeoutInterval = 1.0;
 	
 	ExperiencerFrameBars.color:SetStatusBarColor(c.r, c.g, c.b, 0.23 + ib * 0.26); -- adjust color strength by brightness
 	ExperiencerFrameBars.rested:SetStatusBarColor(c.r, c.g, c.b, 0.3);
 	
 	ExperiencerFrameBars.visual:SetStatusBarColor(c.r, c.g, c.b, 0.375);
 	
-	ExperiencerFrameBars.visual:SetFrameLevel(ExperiencerFrameBars.rested:GetFrameLevel()+1);
-	ExperiencerFrameBars.gain:SetFrameLevel(ExperiencerFrameBars.visual:GetFrameLevel());
-	ExperiencerFrameBars.main:SetFrameLevel(ExperiencerFrameBars.gain:GetFrameLevel()+1);
-	ExperiencerFrameBars.color:SetFrameLevel(ExperiencerFrameBars.main:GetFrameLevel()+1);
-	ExperiencerBarTextFrame:SetFrameLevel(ExperiencerFrameBars.main:GetFrameLevel()+2);
+	-----------------------------
+	
+	for index, frameName in ipairs(FrameLevels) do
+		local frame = _G[frameName];
+		if(index == 1) then
+			baseFrameLevel = frame:GetFrameLevel();
+		else
+			frame:SetFrameLevel(baseFrameLevel+index-1);
+		end
+	end
 end
 
 function Addon:ToggleVisibility(visiblity)
@@ -238,28 +253,97 @@ function Addon:GetActiveModule()
 	return Addon.modules[self.db.char.ActiveModule];
 end
 
+function Addon:SetAnimationSpeed(speed)
+	assert(speed and speed > 0);
+	
+	speed = (1 / speed) * 0.5;
+	ExperiencerFrameBars.main.tileTemplateDelay = 0.3 * speed;
+	
+	local durationPerDistance = 0.008 * speed;
+	
+	for index, anim in ipairs({ ExperiencerFrameBars.main.Anim:GetAnimations() }) do
+		if(anim.durationPerDistance) then
+			anim.durationPerDistance = durationPerDistance;
+		end
+		if(anim.delayPerDistance) then
+			anim.delayPerDistance = durationPerDistance;
+		end
+		
+		local animtype = anim:GetObjectType();
+	end
+end
+
 function Addon:UpdateBars(instant)
 	local module = Addon:GetActiveModule();
 	if(not module) then return end
 	
+	local moduleChanged = (module ~= Addon.PreviousModule);
+	Addon.PreviousModule = module;
+	
 	local data = module:GetBarData();
 	
-	if(not ExperiencerFrameBars.main:IsAnimating() or instant) then
-		ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
+	local hasChanged = true;
+	
+	local isLoss = false;
+	local changeCurrent = data.current;
+	
+	if(Addon.PreviousData and not moduleChanged) then
+		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
+			isLoss = true;
+			changeCurrent = Addon.PreviousData.current;
+		end
+		
+		if(data.level < Addon.PreviousData.level) then
+			isLoss = true;
+			changeCurrent = data.max;
+		end
+		
+		if(data.current == Addon.PreviousData.current) then
+			hasChanged = false;
+		end
 	end
 	
-	if(instant) then
+	if(not isLoss) then
+		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.6;
+	else
+		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.35;
+	end
+	
+	Addon:SetAnimationSpeed(1.0);
+	
+	if(hasChanged) then
+		if(Addon.PreviousData and not isLoss) then
+			local diff = (data.current - Addon.PreviousData.current) / data.max;
+			local speed = diff * 1.2 + 1.0;
+			speed = speed * speed;
+			Addon:SetAnimationSpeed(speed);
+		end
+		
+		ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
+	else
+		ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
+		ExperiencerFrameBars.main:ProcessChangesInstantly();
+	end
+	
+	if(instant or isLoss) then
 		ExperiencerFrameBars.main:ProcessChangesInstantly();
 	end
 	
 	ExperiencerFrameBars.color:SetMinMaxValues(data.min, data.max);
-	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetAnimatedValue());
+	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue());
 	
-	ExperiencerFrameBars.gain:SetMinMaxValues(data.min, data.max);
-	ExperiencerFrameBars.gain:SetValue(data.current);
+	ExperiencerFrameBars.change:SetMinMaxValues(data.min, data.max);
+	ExperiencerFrameBars.change:SetValue(changeCurrent);
 	
-	if(not instant) then
-		ExperiencerFrameBars.gain.fade:Play();
+	if(not instant and hasChanged) then
+		if(not isLoss) then
+			ExperiencerFrameBars.change.fadegain:Stop();
+			ExperiencerFrameBars.change.fadegain:Play();
+		else
+			ExperiencerFrameBars.change.fadeloss:Stop();
+			ExperiencerFrameBars.change.fadeloss:Play();
+		end
+		ExperiencerFrameBars.main.spark.fade:Stop();
 		ExperiencerFrameBars.main.spark.fade:Play();
 	end
 	
@@ -278,6 +362,8 @@ function Addon:UpdateBars(instant)
 	else
 		ExperiencerFrameBars.visual:Hide();
 	end
+	
+	Addon.PreviousData = data;
 end
 
 function Addon:UpdateText()
@@ -425,6 +511,15 @@ function Addon:OpenContextMenu()
 				Addon:ToggleVisibility();
 			end,
 			notCheckable = true,
+		},
+		{
+			text = "Flash when able to level up",
+			func = function()
+				self.db.char.FlashLevelUp = not self.db.char.FlashLevelUp;
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.FlashLevelUp; end,
+			isNotRadio = true,
 		},
 		{
 			text = "Keep text visible",
@@ -606,7 +701,7 @@ function Experiencer_OnUpdate(self, elapsed)
 		module:Update(elapsed);
 	end
 	
-	local current = ExperiencerFrameBars.main:GetAnimatedValue();
+	local current = ExperiencerFrameBars.main:GetContinuousAnimatedValue();
 	local minvalue, maxvalue = ExperiencerFrameBars.main:GetMinMaxValues();
 	ExperiencerFrameBars.color:SetValue(current);
 	
@@ -618,6 +713,18 @@ function Experiencer_OnUpdate(self, elapsed)
 		ExperiencerFrameBars.main.spark:SetPoint("CENTER", ExperiencerFrameBars.main, "LEFT", progress * ExperiencerFrameBars.main:GetWidth(), 0);
 	else
 		ExperiencerFrameBars.main.spark:Hide();
+	end
+	
+	if(Addon.db.global.FlashLevelUp) then
+		local module = Addon:GetActiveModule();
+		if(module.levelUpRequiresAction) then
+			if(progress >= 1 and not ExperiencerFrameBars.highlight:IsVisible()) then
+				ExperiencerFrameBars.highlight.fadein:Play();
+			elseif(progress < 1 and ExperiencerFrameBars.highlight:IsVisible()) then
+				ExperiencerFrameBars.highlight.flash:Stop();
+				ExperiencerFrameBars.highlight.fadeout:Play();
+			end
+		end
 	end
 end
 

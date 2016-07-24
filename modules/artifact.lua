@@ -12,6 +12,8 @@ local module = Addon:NewModule("artifact");
 module.name     = "Artifact";
 module.order    = 4;
 
+module.levelUpRequiresAction = true;
+
 module.savedvars = {
 	global = {
 		ShowArtifactName = true,
@@ -63,6 +65,12 @@ function module:GetText()
 	else
 		tinsert(outputText,
 			("%s%s|r / %s (%s%d|r%%)"):format(progressColor, BreakUpLargeNumbers(artifactXP), BreakUpLargeNumbers(xpForNextPoint), progressColor, 100 - progress * 100)
+		);
+	end
+	
+	if(artifactXP >= xpForNextPoint) then
+		tinsert(outputText,
+			"|cff86ff3Ready to spend a point!|r"
 		);
 	end
 	
