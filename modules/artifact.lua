@@ -100,7 +100,6 @@ end
 
 function module:GetBarData()
 	local data    = {};
-	
 	data.level    = 0;
 	data.min  	  = 0;
 	data.max  	  = 1;
