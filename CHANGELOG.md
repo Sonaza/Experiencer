@@ -1,3 +1,6 @@
+## 2.0.1
+* Fixed reputation module glitchiness when not tracking any reputations.
+
 ## 2.0.0
 * Legion update
 	* The addon has been practically rewritten and previously configured settings are unfortunately lost. You can reconfigure settings by right clicking the Experiencer bar.

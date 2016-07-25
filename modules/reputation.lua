@@ -130,15 +130,22 @@ function module:GetChatMessage()
 end
 
 function module:GetBarData()
-	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
-	
 	local data    = {};
-	data.level    = standing;
-	data.min  	  = minReputation;
-	data.max  	  = maxReputation;
-	data.current  = currentReputation;
+	data.level    = 0;
+	data.min  	  = 0;
+	data.max  	  = 1;
+	data.current  = 0;
 	data.rested   = nil;
 	data.visual   = nil;
+	
+	if(module:HasWatchedReputation()) then
+		local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+		
+		data.level    = standing;
+		data.min  	  = minReputation;
+		data.max  	  = maxReputation;
+		data.current  = currentReputation;
+	end
 	
 	return data;
 end
@@ -408,7 +415,7 @@ function module:UPDATE_FACTION(event, ...)
 	local name = GetWatchedFactionInfo();
 	
 	local instant = false;
-	if(name ~= module.Tracked) then
+	if(name ~= module.Tracked or not name) then
 		instant = true;
 	end
 	module.Tracked = name;
