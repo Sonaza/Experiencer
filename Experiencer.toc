@@ -1,10 +1,10 @@
-## Interface: 60200
+## Interface: 70000
 ## Title: Experiencer
 ## Notes: Simple and Advanced Experience and Reputation Progress Bar
 ## Author: Sonaza
-## Version: 1.2.1
+## Version: 2.0.0
 ## OptionalDeps: Ace3
-## SavedVariables: ExperiencerDB
+## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
@@ -13,8 +13,14 @@ libs\AceAddon-3.0\AceAddon-3.0.xml
 libs\AceDB-3.0\AceDB-3.0.xml
 libs\AceEvent-3.0\AceEvent-3.0.xml
 libs\AceHook-3.0\AceHook-3.0.xml
+libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 #@end-no-lib-strip@
 
 core.lua
+modules\experience.lua
+modules\reputation.lua
+modules\artifact.lua
+modules\honor.lua
 events.lua
+databroker.lua
 Frame.xml

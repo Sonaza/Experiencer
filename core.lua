@@ -1,713 +1,240 @@
-local ADDON_NAME, SHARED_DATA = ...;
+------------------------------------------------------------
+-- Experiencer by Sonaza
+-- All rights reserved
+-- http://sonaza.com
+------------------------------------------------------------
 
-local LibStub = LibStub;
-local A = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceEvent-3.0", "AceHook-3.0");
-_G[ADDON_NAME] = A;
-SHARED_DATA[1] = A;
-
-local E = {};
-SHARED_DATA[2] = E;
-A.E = E;
+local ADDON_NAME = ...;
+local Addon = LibStub("AceAddon-3.0"):NewAddon(select(2, ...), ADDON_NAME, "AceEvent-3.0", "AceHook-3.0");
+_G[ADDON_NAME] = Addon;
 
 local AceDB = LibStub("AceDB-3.0");
 
-EXPERIENCER_MODE_XP = 0;
-EXPERIENCER_MODE_REP = 1;
+local TEXT_VISIBILITY_HIDE      = 1;
+local TEXT_VISIBILITY_HOVER     = 2;
+local TEXT_VISIBILITY_ALWAYS    = 3;
 
-local ANCHOR_TOP = 1;
-local ANCHOR_BOTTOM = 2;
-
-function A:OnInitialize()
-	-- SLASH_EXPERIENCER1	= "/exp";
-	-- SLASH_EXPERIENCER2	= "/experiencer";
-	-- SlashCmdList["EXPERIENCER"] = function(command) A:ConsoleHandler(command); end
-	
+function Addon:OnInitialize()
 	local defaults = {
-		profile = {
-			Enabled = true,
-			StickyText = false,
-			Mode = EXPERIENCER_MODE_XP,
-			
-			Session = {
-				Exists = false,
-				Time = 0,
-				TotalXP = 0,
-				AverageQuestXP = 0,
-			}
+		char = {
+			Visible 	    = true,
+			TextVisibility  = TEXT_VISIBILITY_ALWAYS,
+			ActiveModule    = "experience",
 		},
+		
 		global = {
-			AnchorPoint	= ANCHOR_BOTTOM,
-			BigBars = false,
+			AnchorPoint	    = "BOTTOM",
+			BigBars         = false,
+			FlashLevelUp    = true,
 			
-			ShowGainedXP = true,
-			ShowHourlyXP = true,
-			ShowTimeToLevel = true,
-			ShowQuestsToLevel = true,
-			
-			ShowGainedRep = true,
-			AutoWatch = {
-				Enabled = false,
-				IgnoreGuild = true,
-				IgnoreInactive = true,
-				IgnoreBodyguard = true,
-			},
-			
-			KeepSessionData = true,
-			
-			QuestXP = {
-				ShowText = true,
-				AddIncomplete = false,
-				ShowVisualizer = true,
-			},
+			Color = {
+				UseClassColor = true,
+				r = 1,
+				g = 1,
+				b = 1,
+			}
 		}
 	};
 	
 	self.db = AceDB:New("ExperiencerDB", defaults);
 end
 
-function A:OnEnable()
-	A:RegisterEvent("PLAYER_REGEN_DISABLED");
+function Addon:OnEnable()
+	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
+	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
+	Addon:RegisterEvent("PET_BATTLE_CLOSE");
 	
-	A:RegisterEvent("UPDATE_FACTION");
-	A:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE");
+	Addon:UpdateFrames();
 	
-	A:RegisterEvent("PET_BATTLE_OPENING_START");
-	A:RegisterEvent("PET_BATTLE_CLOSE");
+	Addon:InitializeModules();
 	
-	if(not A:IsPlayerMaxLevel()) then
-		A:RegisterEvent("CHAT_MSG_SYSTEM");
+	-- Just cycle through modules and set current active that is not disabled
+	local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+	local newModule = Addon:FindActiveModule(currentIndex, 1);
+	Addon.db.char.ActiveModule = newModule.id;
 	
-		A:RegisterEvent("PLAYER_XP_UPDATE");
-		A:RegisterEvent("PLAYER_LEVEL_UP");
-		
-		A:RegisterEvent("UNIT_INVENTORY_CHANGED");
-		A:RegisterEvent("QUEST_LOG_UPDATE");
-	else
-		self.db.profile.Mode = EXPERIENCER_MODE_REP;
-	end
+	Addon:InitializeDataBroker();
 	
-	A.GainUpdateTimer = 0;
+	Addon:UpdateBars();
+	Addon:UpdateText();
 	
-	A.RecentReputations = {};
-	
-	A.IsVisible = true;
-	A.NoReputation = false;
-	A.TargetValue = 0;
-	
-	A.Session = {
-		LoginTime 			= time(),
-		ExperienceGained 	= 0,
-		LastXP 				= UnitXP("player"),
-		MaxXP 				= UnitXPMax("player"),
-		
-		QuestsToLevel 		= -1,
-		AverageQuestXP 		= 0,
-		
-		Paused 		= false,
-		PausedTime 	= 0,
-	};
-	
-	A:SetMode(self.db.profile.Mode);
-	A:ToggleVisibility(self.db.profile.Enabled);
-	
-	A:RestoreSession();
-	
-	A:RefreshBar(true);
+	Addon:UpdateVisiblity();
 end
 
-function A:RestoreSession()
-	if(not A:IsPlayerMaxLevel() and self.db.global.KeepSessionData and self.db.profile.Session.Exists) then
-		local data = self.db.profile.Session;
-		
-		A.Session.LoginTime 		= A.Session.LoginTime - data.Time;
-		A.Session.ExperienceGained 	= data.TotalXP;
-		A.Session.AverageQuestXP 	= A.Session.AverageQuestXP;
-		
-		if(A.Session.AverageQuestXP > 0) then
-			local remaining_xp = UnitXPMax("player") - UnitXP("player");
-			A.Session.QuestsToLevel = ceil(remaining_xp / A.Session.AverageQuestXP);
+function Addon:IsBarVisible()
+	return self.db.char.Visible;
+end
+
+Addon.modules           = {};
+Addon.orderedModules    = {};
+Addon.eventframes       = {};
+
+setmetatable(Addon.modules, {
+	__newindex = function(self, moduleID, module)
+		if(type(module) ~= "table") then
+			error("Unable to create new index: type is not a table", 2);
 		end
+		
+		Addon.eventframes[moduleID] = CreateFrame("Frame");
+		Addon.eventframes[moduleID]:SetScript("OnEvent", function(self, event, ...)
+			if(module[event]) then
+				module[event](module, event, ...);
+			end
+		end);
+		
+		rawset(self, moduleID, module);
 	end
-end
+});
 
-function A:ResetSession()
-	A.Session = {
-		LoginTime 			= time(),
-		ExperienceGained 	= 0,
-		LastXP 				= UnitXP("player"),
-		MaxXP 				= UnitXPMax("player"),
-		
-		AverageQuestXP		= 0,
-		QuestsToLevel 		= -1,
-		
-		Paused = false,
-		PausedTime = 0,
-	};
+function Addon:NewModule(moduleID, module)
+	if(Addon.modules[moduleID]) then
+		error(("Addon:RegisterModule(moduleID[, module]): Module '%s' is already registered."):format(tostring(moduleID)), 2);
+		return;
+	end
 	
-	self.db.profile.Session = {
-		Exists = false,
-		Time = 0,
-		TotalXP = 0,
-		AverageQuestXP = 0,
-	};
+	local module = module or {};
+	module.id = moduleID;
 	
-	A:RefreshBar();
-end
-
-local FormatTime
-do
-	local DAY_ABBR, HOUR_ABBR = gsub(DAY_ONELETTER_ABBR, "%%d%s*", ""), gsub(HOUR_ONELETTER_ABBR, "%%d%s*", "");
-	local MIN_ABBR, SEC_ABBR = gsub(MINUTE_ONELETTER_ABBR, "%%d%s*", ""), gsub(SECOND_ONELETTER_ABBR, "%%d%s*", "");
+	Addon.modules[moduleID] = module;
 	
-	local DHMS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", DAY_ABBR, "%02d", HOUR_ABBR, "%02d", MIN_ABBR, "%02d", SEC_ABBR)
-	local  HMS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", HOUR_ABBR, "%02d", MIN_ABBR, "%02d", SEC_ABBR)
-	local   MS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", MIN_ABBR, "%02d", SEC_ABBR)
-	local    S = format("|cffffffff%s|r|cffffcc00%s|r", "%d", SEC_ABBR)
-
-	function FormatTime(t)
-		if not t then return end
-
-		local d, h, m, s = floor(t / 86400), floor((t % 86400) / 3600), floor((t % 3600) / 60), floor(t % 60)
-		
-		if d > 0 then
-			return format(DHMS, d, h, m, s)
-		elseif h > 0 then
-			return format(HMS, h, m ,s)
-		elseif m > 0 then
-			return format(MS, m, s)
+	module.RegisterEvent = function(self, eventName)
+		if(not self[eventName]) then
+			error(("module:RegisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
 		else
-			return format(S, s)
+			Addon.eventframes[self.id]:RegisterEvent(eventName);
 		end
 	end
-end
 
-function A:GetStandingColorText(standing)
-	local colors = {
-		[1] = {r=0.80, g=0.13, b=0.13}, -- hated
-		[2] = {r=1.00, g=0.25, b=0.00}, -- hostile
-		[3] = {r=0.93, g=0.40, b=0.13}, -- unfriendly
-		[4] = {r=1.00, g=1.00, b=0.00}, -- neutral
-		[5] = {r=0.00, g=0.70, b=0.00}, -- friendly
-		[6] = {r=0.00, g=1.00, b=0.00}, -- honoured
-		[7] = {r=0.00, g=0.60, b=1.00}, -- revered
-		[8] = {r=0.00, g=1.00, b=1.00}, -- exalted
-	}
-	
-	return string.format('|cff%02x%02x%02x%s|r', colors[standing].r * 255, colors[standing].g * 255, colors[standing].b * 255, _G['FACTION_STANDING_LABEL' .. standing]);
-end
-
-function A:GetCurrentResolutionSize()
-	local resolutions		= { GetScreenResolutions() };
-	return strsplit("x", resolutions[GetCurrentResolution()]);
-end
-
-function A:IsPlayerMaxLevel(level)
-	return MAX_PLAYER_LEVEL_TABLE[GetExpansionLevel()] == (level or UnitLevel("player"));
-end
-
-function A:ConsoleHandler(command)
-	
-end
-
-function A:OpenContextMenu()
-	if(UnitAffectingCombat("player")) then return end
-	
-	if(not A.ContextMenu) then
-		A.ContextMenu = CreateFrame("Frame", "ExperiencerContextMenuFrame", UIParent, "UIDropDownMenuTemplate");
-	end
-	
-	local contextMenuData = {
-		{
-			text = "Experiencer",
-			isTitle = true,
-			notCheckable = true,
-		},
-		{
-			text = "Keep Text Visible",
-			func = function()
-				self.db.profile.StickyText = not self.db.profile.StickyText;
-				if(self.db.profile.StickyText) then
-					UIFrameFadeOut(ExperiencerBarText, 0.1, 0, 1);
-				else
-					UIFrameFadeOut(ExperiencerBarText, 0.1, 1, 0);
-				end
-				A:OpenContextMenu();
-			end,
-			checked = function() return self.db.profile.StickyText; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Frame Options",
-			notCheckable = true,
-			hasArrow = true,
-			menuList = {
-				{
-					text = "Frame Options", isTitle = true, notCheckable = true,
-				},
-				{
-					text = "Enlarge Experiencer Bar",
-					func = function() self.db.global.BigBars = not self.db.global.BigBars; A:UpdateFrames(); end,
-					checked = function() return self.db.global.BigBars; end,
-					isNotRadio = true,
-				},
-				{
-					text = " ", isTitle = true, notCheckable = true,
-				},
-				{
-					text = "Frame Anchor", isTitle = true, notCheckable = true,
-				},
-				{
-					text = "Anchor to Bottom",
-					func = function()
-						self.db.global.AnchorPoint = ANCHOR_BOTTOM;
-						A:UpdateFrames();
-					end,
-					checked = function() return self.db.global.AnchorPoint == ANCHOR_BOTTOM; end,
-				},
-				{
-					text = "Anchor to Top",
-					func = function()
-						self.db.global.AnchorPoint = ANCHOR_TOP;
-						A:UpdateFrames();
-					end,
-					checked = function() return self.db.global.AnchorPoint == ANCHOR_TOP; end,
-				},
-			},
-		},
-		{
-			text = "",
-			isTitle = true,
-			notCheckable = true,
-			disabled = true,
-		},
-		{
-			text = "Experience Options",
-			isTitle = true,
-			notCheckable = true,
-		},
-		{
-			text = "Reset XP Session",
-			func = function()
-				A:ResetSession();
-			end,
-			notCheckable = true,
-		},
-		{
-			text = "Keep Session Data",
-			func = function() self.db.global.KeepSessionData = not self.db.global.KeepSessionData; A:OpenContextMenu(); end,
-			checked = function() return self.db.global.KeepSessionData; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show Gained XP",
-			func = function() self.db.global.ShowGainedXP = not self.db.global.ShowGainedXP; A:RefreshBar(); A:OpenContextMenu(); end,
-			checked = function() return self.db.global.ShowGainedXP; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show XP per Hour",
-			func = function() self.db.global.ShowHourlyXP = not self.db.global.ShowHourlyXP; A:RefreshBar(); A:OpenContextMenu(); end,
-			checked = function() return self.db.global.ShowHourlyXP; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show Time to Level",
-			func = function() self.db.global.ShowTimeToLevel = not self.db.global.ShowTimeToLevel; A:RefreshBar(); A:OpenContextMenu(); end,
-			checked = function() return self.db.global.ShowTimeToLevel; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show Quests to Level",
-			func = function() self.db.global.ShowQuestsToLevel = not self.db.global.ShowQuestsToLevel; A:RefreshBar(); A:OpenContextMenu(); end,
-			checked = function() return self.db.global.ShowQuestsToLevel; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Quest XP Visualizer",
-			notCheckable = true,
-			hasArrow = true,
-			menuList = {
-				{
-					text = "Show Completed Quest XP",
-					func = function() self.db.global.QuestXP.ShowText = not self.db.global.QuestXP.ShowText; A:RefreshBar(); end,
-					checked = function() return self.db.global.QuestXP.ShowText; end,
-					isNotRadio = true,
-				},
-				{
-					text = "Also Add XP from Incomplete Quests",
-					func = function() self.db.global.QuestXP.AddIncomplete = not self.db.global.QuestXP.AddIncomplete; A:RefreshBar(); end,
-					checked = function() return self.db.global.QuestXP.AddIncomplete; end,
-					isNotRadio = true,
-				},
-				{
-					text = "Show Visualizer Bar",
-					func = function() self.db.global.QuestXP.ShowVisualizer = not self.db.global.QuestXP.ShowVisualizer; A:RefreshBar(); end,
-					checked = function() return self.db.global.QuestXP.ShowVisualizer; end,
-					isNotRadio = true,
-				},	
-			},
-		},
-		{
-			text = "",
-			isTitle = true,
-			notCheckable = true,
-			disabled = true,
-		},
-		{
-			text = "Reputation Options",
-			isTitle = true,
-			notCheckable = true,
-		},
-		{
-			text = "Show Gained Reputation",
-			func = function() self.db.global.ShowGainedRep = not self.db.global.ShowGainedRep; A:RefreshBar(); A:OpenContextMenu(); end,
-			checked = function() return self.db.global.ShowGainedRep; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Auto Watch Most Recent Reputation",
-			func = function() self.db.global.AutoWatch.Enabled = not self.db.global.AutoWatch.Enabled; A:OpenContextMenu(); end,
-			checked = function() return self.db.global.AutoWatch.Enabled; end,
-			hasArrow = true,
-			isNotRadio = true,
-			menuList = {
-				{
-					text = "Ignore Guild Reputation",
-					func = function() self.db.global.AutoWatch.IgnoreGuild = not self.db.global.AutoWatch.IgnoreGuild; A:OpenContextMenu(); end,
-					checked = function() return self.db.global.AutoWatch.IgnoreGuild; end,
-					isNotRadio = true,
-				},
-				{
-					text = "Ignore Bodyguard Reputations",
-					func = function() self.db.global.AutoWatch.IgnoreBodyguard = not self.db.global.AutoWatch.IgnoreBodyguard; A:OpenContextMenu(); end,
-					checked = function() return self.db.global.AutoWatch.IgnoreBodyguard; end,
-					isNotRadio = true,
-				},
-				{
-					text = "Ignore Inactive Reputations",
-					func = function() self.db.global.AutoWatch.IgnoreInactive = not self.db.global.AutoWatch.IgnoreInactive; A:OpenContextMenu(); end,
-					checked = function() return self.db.global.AutoWatch.IgnoreInactive; end,
-					isNotRadio = true,
-				},
-			},
-		},
-		{
-			text = "Set Watched Faction",
-			func = function() ToggleCharacter("ReputationFrame"); end,
-			hasArrow = true,
-			notCheckable = true,
-			menuList = A:GetReputationsMenu(),
-		},
-	};
-	
-	if(self.db.profile.Enabled) then
-		tinsert(contextMenuData, 2, {
-			text = "Hide Experiencer Bar",
-			func = function() self.db.profile.Enabled = false; A:ToggleVisibility(false); end,
-			notCheckable = true,
-		});
-	else
-		tinsert(contextMenuData, 2, {
-			text = "Show Experiencer Bar",
-			func = function() self.db.profile.Enabled = true; A:ToggleVisibility(true); end,
-			notCheckable = true,
-		});
-	end
-	
-	if(not A:IsPlayerMaxLevel()) then
-		if(self.db.profile.Mode == EXPERIENCER_MODE_XP) then
-			tinsert(contextMenuData, 3, {
-				text = "Switch to Reputation Bar",
-				func = function() A:SetMode(EXPERIENCER_MODE_REP); A:OpenContextMenu(); end,
-				notCheckable = true,
-			});
-			
-		elseif(self.db.profile.Mode == EXPERIENCER_MODE_REP) then
-			tinsert(contextMenuData, 3, {
-				text = "Switch to Experience Bar",
-				func = function() A:SetMode(EXPERIENCER_MODE_XP); A:OpenContextMenu(); end,
-				notCheckable = true,
-			});
-			
+	module.UnregisterEvent = function(self, eventName)
+		if(not self[eventName]) then
+			error(("module:UnregisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
+		else
+			Addon.eventframes[self.id]:UnregisterEvent(eventName);
 		end
 	end
-	
-	A.ContextMenu:SetPoint("BOTTOM", ExperiencerBar, "TOP", 0, 0);
-	EasyMenu(contextMenuData, A.ContextMenu, "cursor", 0, 0, "MENU");
-	
-	local mouseX, mouseY = GetCursorPosition();
-	local scale = UIParent:GetEffectiveScale();
-	
-	local point, yoffset = "BOTTOM", 14;
-	if(A.db.global.AnchorPoint == ANCHOR_TOP) then
-		point = "TOP";
-		yoffset = -14;
+
+	module.Refresh = function(self, instant)
+		Addon:RefreshModule(self, instant);
+	end
+
+	module.RefreshText = function(self)
+		Addon:UpdateText();
 	end
 	
-	DropDownList1:ClearAllPoints();
-	DropDownList1:SetPoint(point, ExperiencerBar, "CENTER", mouseX / scale - GetScreenWidth() / 2, yoffset);
+	return module;
 end
 
-function A:GetReputationID(faction_name)
-	if(faction_name == GUILD) then
-		return 2;
-	end
-	
-	local numFactions = GetNumFactions();
-	local index = 1;
-	while index <= numFactions do
-		local name, _, _, _, _, _, _, _, isHeader, isCollapsed, _, _, _, factionID = GetFactionInfo(index);
+function Addon:InitializeModules()
+	for moduleID, module in pairs(Addon.modules) do
+		Addon.orderedModules[module.order] = module;
 		
-		if(isHeader and isCollapsed) then
-			ExpandFactionHeader(index);
-			numFactions = GetNumFactions();
+		if(module.savedvars) then
+			module.db = AceDB:New("ExperiencerDB_module_" .. moduleID, module.savedvars);
 		end
 		
-		if(name == faction_name) then return index, factionID end
-			
-		index = index + 1;
+		module:Initialize();
 	end
-	
-	return nil
 end
 
-function A:GetRecentReputationsMenu()
-	local factions = {
-		{
-			text = " ", isTitle = true, notCheckable = true,
-		},
-		{
-			text = "Recent Reputations", isTitle = true, notCheckable = true,
-		},
-	};
-		
-	local recentReps = 0;
-	
-	for name, data in pairs(A.RecentReputations) do
-		local faction_index = A:GetReputationID(name);
-		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(faction_index);
-		local friend_level = select(7, GetFriendshipReputation(factionID));
-		local standing_text = "";
-		
-		if(not isHeader or hasRep) then
-			if(friend_level) then
-				standing_text = friend_level;
-			else
-				standing_text = A:GetStandingColorText(standing)
-			end
-		end
-		
-		tinsert(factions, {
-			text = string.format("%s (%s)  +%s rep this session", name, standing_text, BreakUpLargeNumbers(data.amount)),
-			func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
-			checked = function() return isWatched end,
-		})
-		
-		recentReps = recentReps + 1;
-	end
-	
-	if(recentReps == 0) then
-		return false;
-	end
-	
-	return factions;
+function Addon:RefreshModule(module, instant)
+	Addon:UpdateBars(instant);
+	Addon:UpdateText();
 end
 
-function A:GetReputationsMenu()
-	local factions = {
-		{
-			text = "Choose Category",
-			isTitle = true,
-			notCheckable = true,
-		},
-	};
-	
-	local previous, current = nil, nil;
-	local depth = 0;
-	
-	local numFactions = GetNumFactions();
-	local index = 1;
-	while index <= numFactions do
-		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(index);
-		local friend_level = select(7, GetFriendshipReputation(factionID));
-		local standing_text = "";
-		local faction_index = index;
-		
-		if(not isHeader or hasRep) then
-			if(friend_level) then
-				standing_text = friend_level;
-			else
-				standing_text = A:GetStandingColorText(standing)
-			end
-		end
-		
-		if(isHeader and isCollapsed) then
-			ExpandFactionHeader(index);
-			numFactions = GetNumFactions();
-		end
-		
-		if(isHeader and isChild) then -- Second tier header
-			if(depth == 2) then
-				current = previous;
-				previous = nil;
-			end
-			
-			if(not hasRep) then
-				tinsert(current, {
-					text = name,
-					hasArrow = true,
-					notCheckable = true,
-					menuList = {},
-				})
-			else
-				tinsert(current, {
-					text = string.format("%s (%s)", name, standing_text),
-					hasArrow = true,
-					func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
-					checked = function() return isWatched; end,
-					menuList = {},
-				})
-			end
-			
-			previous = current;
-			current = current[#current].menuList;
-			tinsert(current, {
-				text = name,
-				isTitle = true,
-				notCheckable = true,
-			})
-			
-			depth = 2
-			
-		elseif(isHeader) then -- First tier header
-			tinsert(factions, {
-				text = name,
-				hasArrow = true,
-				notCheckable = true,
-				menuList = {},
-			})
-			
-			current = factions[#factions].menuList;
-			tinsert(current, {
-				text = name,
-				isTitle = true,
-				notCheckable = true,
-			})
-			
-			depth = 1
-		elseif(not isHeader) then -- First and second tier faction
-			tinsert(current, {
-				text = string.format("%s (%s)", name, standing_text),
-				func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
-				checked = function() return isWatched end,
-			})
-		end
-		
-		index = index + 1;
-	end
-	
-	local recent = A:GetRecentReputationsMenu();
-	if(recent ~= false) then
-		for _, data in ipairs(recent) do tinsert(factions, data) end
-	end
-	
-	return factions;
-end
-
-function A:UpdateFrames()
-	ExperiencerFrame:ClearAllPoints();
-	ExperiencerBarText:ClearAllPoints();
-	
-	local yo1, yo2, yo3, visualizerPad = -1, 9, 3, 0;
-	
-	if(A.db.global.BigBars) then
-		yo1, yo2, yo3, visualizerPad = -1, 16, 7, 3;
-		ExperiencerBarText:SetFontObject("ExperiencerBigFont");
-	else
-		ExperiencerBarText:SetFontObject("ExperiencerFont");
-	end
-	
-	if(A.db.global.AnchorPoint == ANCHOR_TOP) then
-		ExperiencerFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -yo1);
-		ExperiencerFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPRIGHT", 0, -yo2);
-		ExperiencerBarText:SetPoint("TOP", ExperiencerFrame, "TOP", 0, -yo3);
-		
-		ExperiencerVisualizerBar:SetPoint("BOTTOMLEFT", ExperiencerFrame, "BOTTOMLEFT", 4, 6 + visualizerPad);
-		ExperiencerVisualizerBar:SetPoint("TOPRIGHT", ExperiencerFrame, "TOPRIGHT", -4, -2);
-		
-	elseif(A.db.global.AnchorPoint == ANCHOR_BOTTOM) then
-		ExperiencerFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, yo1);
-		ExperiencerFrame:SetPoint("TOPRIGHT", UIParent, "BOTTOMRIGHT", 0, yo2);
-		ExperiencerBarText:SetPoint("BOTTOM", ExperiencerFrame, "BOTTOM", 0, yo3);
-		
-		ExperiencerVisualizerBar:SetPoint("BOTTOMLEFT", ExperiencerFrame, "BOTTOMLEFT", 4, 2);
-		ExperiencerVisualizerBar:SetPoint("TOPRIGHT", ExperiencerFrame, "TOPRIGHT", -4, -6 - visualizerPad);
-	end
-	
+function Addon:GetPlayerClassColor()
 	local _, class = UnitClass("player");
-	local c = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class];
-	
-	ExperiencerBar:SetStatusBarColor(c.r, c.g, c.b, 0.35);
-	ExperiencerColorBar:SetStatusBarColor(c.r, c.g, c.b);
-	
-	ExperiencerRestedBar:SetStatusBarColor(c.r, c.g, c.b, 0.4);
-	
-	ExperiencerGainBar:SetStatusBarColor(1, 1, 1);
-	
-	A:RefreshBar(true);
+	return (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class or 'PRIEST'];
 end
 
-function A:ShowBar()
-	ExperiencerBar:Show();
-	ExperiencerColorBar:Show();
-	ExperiencerGainBar:Show();
-	ExperiencerRestedBar:Show();
-	
-	if(self.db.profile.StickyText) then
-		ExperiencerBarText:Show();
-	end
-	
-	if(not A.IsVisible) then
-		A:RefreshBar(true);
-	end
-	
-	A.IsVisible = true;
-end
-
-function ExperiencerBar_OnShow(self)
-	A:RefreshBar(true);
-end
-
-function A:HideBar()
-	ExperiencerBar:Hide();
-	ExperiencerVisualizerBar:Hide();
-	ExperiencerColorBar:Hide();
-	ExperiencerGainBar:Hide();
-	ExperiencerRestedBar:Hide();
-	
-	ExperiencerBarText:Hide();
-	
-	A.IsVisible = false;
-end
-
-function A:ToggleVisibility(visible)
-	A.IsVisible = visible or (not A.IsVisible);
-	
-	if(visible) then
-		A:ShowBar();
+function Addon:GetBarColor()
+	if(self.db.global.Color.UseClassColor) then
+		return Addon:GetPlayerClassColor();
 	else
-		A:HideBar();
+		return {
+			r = self.db.global.Color.r,
+			g = self.db.global.Color.g,
+			b = self.db.global.Color.b
+		};
 	end
 end
 
-function A:SetMode(new_mode)
-	self.db.profile.Mode = new_mode;
+local FrameLevels = {
+	"ExperiencerFrameBarsRested",
+	"ExperiencerFrameBarsVisual",
+	"ExperiencerFrameBarsChange",
+	"ExperiencerFrameBarsMain",
+	"ExperiencerFrameBarsColor",
+	"ExperiencerFrameBarsHighlight",
+	"ExperiencerBarTextFrame",
+};
+
+function Addon:UpdateFrames()
+	if(not Addon.db.global.BigBars) then
+		ExperiencerFrame:SetHeight(10);
+		ExperiencerBarTextFrame:SetHeight(20);
+		ExperiencerBarText:SetFontObject("ExperiencerFont");
+	else
+		ExperiencerFrame:SetHeight(18);
+		ExperiencerBarTextFrame:SetHeight(28);
+		ExperiencerBarText:SetFontObject("ExperiencerBigFont");
+	end
 	
-	A:UpdateFrames();
-	A:ToggleVisibility(true);
+	local anchor = Addon.db.global.AnchorPoint or "BOTTOM";
+	ExperiencerFrame:ClearAllPoints();
+	ExperiencerFrame:SetPoint(anchor .. "LEFT", UIParent, anchor .. "LEFT", 0, -1);
+	ExperiencerFrame:SetPoint(anchor .. "RIGHT", UIParent, anchor .. "RIGHT", 0, -1);
+	ExperiencerBarTextFrame:ClearAllPoints();
+	ExperiencerBarTextFrame:SetPoint(anchor, ExperiencerFrameBars, anchor);
+	
+	local c = Addon:GetBarColor();
+	local ib = 1 - (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b); -- calculate inverse brightness
+	
+	ExperiencerFrameBars.main:SetStatusBarColor(c.r, c.g, c.b);
+	ExperiencerFrameBars.main:SetAnimatedTextureColors(c.r, c.g, c.b);
+	
+	ExperiencerFrameBars.color:SetStatusBarColor(c.r, c.g, c.b, 0.23 + ib * 0.26); -- adjust color strength by brightness
+	ExperiencerFrameBars.rested:SetStatusBarColor(c.r, c.g, c.b, 0.3);
+	
+	ExperiencerFrameBars.visual:SetStatusBarColor(c.r, c.g, c.b, 0.375);
+	
+	-----------------------------
+	
+	for index, frameName in ipairs(FrameLevels) do
+		local frame = _G[frameName];
+		if(index == 1) then
+			baseFrameLevel = frame:GetFrameLevel();
+		else
+			frame:SetFrameLevel(baseFrameLevel+index-1);
+		end
+	end
 end
 
-function A:GetProgressColor(progress)
+function Addon:ToggleVisibility(visiblity)
+	self.db.char.Visible = visiblity or not self.db.char.Visible;
+	Addon:UpdateVisiblity();
+end
+
+function Addon:UpdateVisiblity()
+	if(self.db.char.Visible) then
+		Addon:ShowBar();
+	else
+		Addon:HideBar();
+	end
+end
+
+function Addon:ShowBar()
+	ExperiencerFrameBars:Show();
+	
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+		ExperiencerBarTextFrame:Show();
+	end
+end
+
+function Addon:HideBar()
+	ExperiencerFrameBars:Hide();
+end
+
+function Addon:GetProgressColor(progress)
 	local r = math.min(1.0, math.max(0.0, 2.0 - progress * 1.8));
 	local g = math.min(1.0, math.max(0.0, progress * 2.0));
 	local b = 0;
@@ -715,344 +242,151 @@ function A:GetProgressColor(progress)
 	return string.format("|cff%02x%02x%02x", r * 255, g * 255, b * 255);
 end
 
-local heirloomItemXP = {
-	["INVTYPE_HEAD"] 		= 0.1,
-	["INVTYPE_SHOULDER"] 	= 0.1,
-	["INVTYPE_CHEST"] 		= 0.1,
-	["INVTYPE_ROBE"] 		= 0.1,
-	["INVTYPE_LEGS"] 		= 0.1,
-	["INVTYPE_FINGER"] 		= 0.05,
-	["INVTYPE_CLOAK"] 		= 0.05,
-	
-	-- Darkmoon rings with battleground xp bonus instead
-	[126948] 	= 0.0,
-	[126949]	= 0.0,
-};
-
-local heirloomSlots = {
-	1, 3, 5, 7, 11, 12, 15,
-};
-
-local buffMultipliers = {
-	[46668]		= { multiplier = 0.1, }, -- Darkmoon Carousel Buff
-	[178119] 	= { multiplier = 0.2, }, -- Excess Potion of Accelerated Learning
-	[127250]	= { multiplier = 3.0, maxlevel = 84, }, -- Elixir of Ancient Knowledge
-	[189375]	= { multiplier = 3.0, maxlevel = 99, }, -- Elixir of the Rapid Mind
-};
-
-function A:PlayerHasBuff(spellID)
+function Addon:PlayerHasBuff(spellID)
 	local spellName = GetSpellInfo(spellID);
 	return UnitAura("player", spellName) ~= nil;
 end
 
-E.GROUP_TYPE = {
-	SOLO 	= 0x1,
-	PARTY 	= 0x2,
-	RAID	= 0x3,
-};
-
-function A:GetGroupType()
-	if(IsInRaid()) then
-		return E.GROUP_TYPE.RAID;
-	elseif(IsInGroup()) then
-		return E.GROUP_TYPE.PARTY;
-	end
-	
-	return E.GROUP_TYPE.SOLO;
+function Addon:SetActiveModule(moduleID)
+	self.db.char.ActiveModule = moduleID;
+	Addon:UpdateFrames();
 end
 
-local partyUnitID = { "player", "party1", "party2", "party3", "party4" };
-
-function A:GetUnitID(group_type, index)
-	if(group_type == E.GROUP_TYPE.SOLO or group_type == E.GROUP_TYPE.PARTY) then
-		return partyUnitID[index];
-	elseif(group_type == E.GROUP_TYPE.RAID) then
-		return string.format("raid%d", index);
+function Addon:GetActiveModule()
+	if(not Addon.modules[self.db.char.ActiveModule]) then
+		error(("Addon:GetActiveModule(): Module '%s' is not registered."):format(tostring(self.db.char.ActiveModule)), 2);
 	end
-	
-	return nil;
+	return Addon.modules[self.db.char.ActiveModule];
 end
 
-local function GroupIterator()
-	local index = 0;
-	local groupType = A:GetGroupType();
-	local numGroupMembers = GetNumGroupMembers();
-	if(groupType == E.GROUP_TYPE.SOLO) then numGroupMembers = 1 end
+function Addon:SetAnimationSpeed(speed)
+	assert(speed and speed > 0);
 	
-	return function()
-		index = index + 1;
-		if(index <= numGroupMembers) then
-			return index, A:GetUnitID(groupType, index);
+	speed = (1 / speed) * 0.5;
+	ExperiencerFrameBars.main.tileTemplateDelay = 0.3 * speed;
+	
+	local durationPerDistance = 0.008 * speed;
+	
+	for index, anim in ipairs({ ExperiencerFrameBars.main.Anim:GetAnimations() }) do
+		if(anim.durationPerDistance) then
+			anim.durationPerDistance = durationPerDistance;
 		end
-	end
-end
-
-function A:HasRecruitAFriendBonus()
-	local playerLevel = UnitLevel("player");
-	
-	for index, unit in GroupIterator() do
-		if(not UnitIsUnit("player", unit) and UnitIsVisible(unit) and IsReferAFriendLinked(unit)) then
-			local unitLevel = UnitLevel(unit);
-			if(math.abs(playerLevel - unitLevel) <= 4 and playerLevel < 90) then
-				return true;
-			end
+		if(anim.delayPerDistance) then
+			anim.delayPerDistance = durationPerDistance;
 		end
-	end
-	
-	return false;
-end
-
-function A:CalculateXPMultiplier()
-	local multiplier = 1.0;
-	
-	if(A:HasRecruitAFriendBonus()) then
-		multiplier = multiplier * 3.0;
-	end
-	
-	for _, slotID in ipairs(heirloomSlots) do
-		local link = GetInventoryItemLink("player", slotID);
 		
-		if(link) then
-			local _, _, itemRarity, _, _, _, _, _, itemEquipLoc = GetItemInfo(link);
-			
-			if(itemRarity == 7) then
-				local itemID = tonumber(strmatch(link, "item:(%d*)")) or 0;
-				local itemMultiplier = heirloomItemXP[itemID] or heirloomItemXP[itemEquipLoc];
-				
-				multiplier = multiplier + itemMultiplier;
-			end
+		local animtype = anim:GetObjectType();
+	end
+end
+
+function Addon:UpdateBars(instant)
+	local module = Addon:GetActiveModule();
+	if(not module) then return end
+	
+	local moduleChanged = (module ~= Addon.PreviousModule);
+	Addon.PreviousModule = module;
+	
+	local data = module:GetBarData();
+	
+	local hasChanged = true;
+	
+	local isLoss = false;
+	local changeCurrent = data.current;
+	
+	if(Addon.PreviousData and not moduleChanged) then
+		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
+			isLoss = true;
+			changeCurrent = Addon.PreviousData.current;
+		end
+		
+		if(data.level < Addon.PreviousData.level) then
+			isLoss = true;
+			changeCurrent = data.max;
+		end
+		
+		if(data.current == Addon.PreviousData.current) then
+			hasChanged = false;
 		end
 	end
 	
-	local playerLevel = UnitLevel("player");
-	
-	for buffSpellID, buffMultiplier in pairs(buffMultipliers) do
-		if(A:PlayerHasBuff(buffSpellID)) then
-			if(not buffMultiplier.maxlevel or (buffMultiplier.maxlevel and playerLevel <= buffMultiplier.maxlevel)) then
-				multiplier = multiplier + buffMultiplier.multiplier;
-			end
-		end 
-	end
-	
-	return multiplier;
-end
-
-function A:CalculateQuestLogXP()
-	local completeXP, incompleteXP = 0, 0;
-	
-	if (GetNumQuestLogEntries() == 0) then return 0, 0, 0; end
-	
-	local index = 0;
-	local lastSelected = GetQuestLogSelection();
-	local playerMoney = GetMoney();
-	
-	repeat
-		index = index + 1;
-		local questTitle, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(index);
-		
-		if(not isHeader) then
-			SelectQuestLogEntry(index);
-			
-			local requiredMoney = GetQuestLogRequiredMoney(index);
-			local numObjectives = GetNumQuestLeaderBoards(index);
-			
-			if(isComplete and isComplete < 0) then
-				isComplete = false;
-			elseif(numObjectives == 0 and playerMoney >= requiredMoney) then
-				isComplete = true;
-			end
-			
-			if(isComplete) then
-				completeXP = completeXP + GetQuestLogRewardXP();
-			else
-				incompleteXP = incompleteXP + GetQuestLogRewardXP();
-			end
-		end
-	until(questTitle == nil);
-	
-	SelectQuestLogEntry(lastSelected);
-	
-	local multiplier = A:CalculateXPMultiplier();
-	
-	return completeXP * multiplier, incompleteXP * multiplier, (completeXP + incompleteXP) * multiplier;
-end
-
-function A:RefreshExperienceBar(set_value)
-	local current_xp, max_xp = UnitXP("player"), UnitXPMax("player");
-	local rested_xp = GetXPExhaustion() or 0;
-	local remaining_xp = max_xp - current_xp;
-	
-	A.TargetValue = current_xp;
-	
-	local completeXP, incompleteXP, totalXP = A:CalculateQuestLogXP();
-	local questXP = completeXP;
-	if(self.db.global.QuestXP.AddIncomplete) then
-		questXP = totalXP
-	end
-	
-	ExperiencerBar:SetMinMaxValues(0, max_xp)
-	ExperiencerColorBar:SetMinMaxValues(0, max_xp);
-	
-	ExperiencerRestedBar:SetMinMaxValues(0, max_xp)
-	
-	ExperiencerGainBar:SetMinMaxValues(0, max_xp)
-	ExperiencerGainBar:SetValue(current_xp);
-	
-	if(self.db.global.QuestXP.ShowVisualizer and A.IsVisible) then
-		ExperiencerVisualizerBar:Show();
-		ExperiencerVisualizerBar:SetMinMaxValues(0, max_xp);
-		ExperiencerVisualizerBar:SetValue(current_xp + questXP);
-		ExperiencerVisualizerBar:SetStatusBarColor(0.2, 0.65, 1.0, 0.6);
-		
+	if(not isLoss) then
+		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.6;
 	else
-		ExperiencerVisualizerBar:Hide();
+		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.35;
 	end
 	
-	if(set_value) then
-		ExperiencerBar:SetValue(current_xp);
-		ExperiencerColorBar:SetValue(current_xp);
-	end
+	Addon:SetAnimationSpeed(1.0);
 	
-	ExperiencerRestedBar:SetValue(current_xp + rested_xp)
-	
-	
-	local progress = current_xp / max_xp;
-	local progressColor = A:GetProgressColor(progress);
-	
-	local outputText = {};
-	
-	tinsert(outputText,
-		string.format("%s%s|r (%s%d|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
-	);
-	
-	if(rested_xp > 0) then
-		tinsert(outputText,
-			string.format("%d%% |cff6fafdfrested|r", math.ceil(rested_xp / max_xp * 100))
-		);
-	end
-	
-	if(A.Session.ExperienceGained > 0) then
-		local hourlyXP, timeToLevel = A:CalculateHourlyXP();
-		
-		if(self.db.global.ShowGainedXP) then
-			tinsert(outputText,
-				string.format("+%s |cffffcc00xp|r", BreakUpLargeNumbers(A.Session.ExperienceGained))
-			);
+	if(hasChanged) then
+		if(Addon.PreviousData and not isLoss) then
+			local diff = (data.current - Addon.PreviousData.current) / data.max;
+			local speed = diff * 1.2 + 1.0;
+			speed = speed * speed;
+			Addon:SetAnimationSpeed(speed);
 		end
 		
-		if(self.db.global.ShowHourlyXP) then
-			tinsert(outputText,
-				string.format("%s |cffffcc00xp/h|r", BreakUpLargeNumbers(hourlyXP))
-			);
-		end
-		
-		if(self.db.global.ShowTimeToLevel) then
-			tinsert(outputText,
-				string.format("%s |cff80e916until level|r", FormatTime(timeToLevel))
-			);
-		end
-	end
-	
-	if(A.Session.QuestsToLevel > 0) then
-		if(self.db.global.ShowQuestsToLevel and A.Session.QuestsToLevel > 0) then
-			tinsert(outputText,
-				string.format("~%s |cff80e916quests|r", A.Session.QuestsToLevel)
-			);
-		end
-	end
-	
-	if(self.db.global.QuestXP.ShowText) then
-		local levelUpAlert = "";
-		if(current_xp + questXP >= max_xp) then
-			levelUpAlert = " (|cfff1e229enough to level|r)";
-		end
-		
-		tinsert(outputText,
-			string.format("%s |cff80e916xp from quests|r%s", BreakUpLargeNumbers(math.floor(questXP)), levelUpAlert)
-		);
-	end
-	
-	ExperiencerBarText:SetText(table.concat(outputText, "  "));
-end
-
-function A:HasWatchedReputation()
-	return GetWatchedFactionInfo() ~= nil;
-end
-
-function A:RefreshReputationBar(set_value)
-	if(not A:HasWatchedReputation()) then return end
-	
-	local name, standing, min_rep, max_rep, rep_value, factionID = GetWatchedFactionInfo();
-	A.CurrentRep = name;
-	
-	local remaining_rep = max_rep - rep_value;
-	
-	ExperiencerGainBar:SetMinMaxValues(min_rep, max_rep)
-	ExperiencerGainBar:SetValue(rep_value);
-	
-	ExperiencerRestedBar:SetMinMaxValues(min_rep, max_rep)
-	ExperiencerRestedBar:SetValue(rep_value)
-	
-	ExperiencerBar:SetMinMaxValues(min_rep, max_rep)
-	ExperiencerColorBar:SetMinMaxValues(min_rep, max_rep)
-	
-	ExperiencerVisualizerBar:Hide();
-	
-	if(set_value) then
-		-- ExperiencerBar:SetStatusBarTexture("Interface\\AddOns\\Experiencer\\Media\\FlatRep")
-		ExperiencerBar:SetValue(rep_value);
-		ExperiencerColorBar:SetValue(rep_value);
-	end
-	
-	A.TargetValue = rep_value;
-	
-	local rep_text = {};
-	
-	local progress = (rep_value - min_rep) / (max_rep - min_rep)
-	local color = A:GetProgressColor(progress);
-	
-	local standing_text = "";
-	local friend_level = select(7, GetFriendshipReputation(factionID));
-	
-	if(not friend_level) then
-		standing_text = A:GetStandingColorText(standing);
+		ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
 	else
-		standing_text = friend_level;
+		ExperiencerFrameBars.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
+		ExperiencerFrameBars.main:ProcessChangesInstantly();
 	end
 	
-	tinsert(rep_text, string.format("%s (%s): %s%s|r (%s%d|r%%)", name, standing_text, color, BreakUpLargeNumbers(remaining_rep), color, 100 - progress * 100));
-	
-	if(self.db.global.ShowGainedRep and A.RecentReputations[name] ~= nil) then
-		tinsert(rep_text, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(A.RecentReputations[name].amount)));
+	if(instant or isLoss) then
+		ExperiencerFrameBars.main:ProcessChangesInstantly();
 	end
 	
-	ExperiencerBarText:SetText(table.concat(rep_text, "  "));
-end
-
-function A:RefreshBar(set_value)
-	-- if(not A.IsVisible and not A.NoReputation) then return end
-	if(not self.db) then return end
+	ExperiencerFrameBars.color:SetMinMaxValues(data.min, data.max);
+	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue());
 	
-	if(self.db.profile.Mode == EXPERIENCER_MODE_XP) then
-		A:RefreshExperienceBar(set_value)
-	elseif(self.db.profile.Mode == EXPERIENCER_MODE_REP) then
-		if(A:HasWatchedReputation()) then
-			A:RefreshReputationBar(set_value);
+	ExperiencerFrameBars.change:SetMinMaxValues(data.min, data.max);
+	ExperiencerFrameBars.change:SetValue(changeCurrent);
+	
+	if(not instant and hasChanged) then
+		if(not isLoss) then
+			ExperiencerFrameBars.change.fadegain:Stop();
+			ExperiencerFrameBars.change.fadegain:Play();
 		else
-			if(not A:IsPlayerMaxLevel()) then
-				A:SetMode(EXPERIENCER_MODE_XP);
-			else
-				A:HideBar();
-			end
+			ExperiencerFrameBars.change.fadeloss:Stop();
+			ExperiencerFrameBars.change.fadeloss:Play();
 		end
+		ExperiencerFrameBars.main.spark.fade:Stop();
+		ExperiencerFrameBars.main.spark.fade:Play();
 	end
+	
+	if(data.rested) then
+		ExperiencerFrameBars.rested:Show();
+		ExperiencerFrameBars.rested:SetMinMaxValues(data.min, data.max);
+		ExperiencerFrameBars.rested:SetValue(data.rested);
+	else
+		ExperiencerFrameBars.rested:Hide();
+	end
+	
+	if(data.visual) then
+		ExperiencerFrameBars.visual:Show();
+		ExperiencerFrameBars.visual:SetMinMaxValues(data.min, data.max);
+		ExperiencerFrameBars.visual:SetValue(data.visual);
+	else
+		ExperiencerFrameBars.visual:Hide();
+	end
+	
+	Addon.PreviousData = data;
+end
+
+function Addon:UpdateText()
+	local module = Addon:GetActiveModule();
+	if(not module) then return end
+	
+	local text = module:GetText() or "<Error: no module text>";
+	ExperiencerBarText:SetText(text);
+	
+	Addon:UpdateDataBrokerText(text);
 end
 
 local function roundnum(num, idp)
 	return tonumber(string.format("%." .. (idp or 0) .. "f", num))
 end
 
-local function kilofy(num)
+function Addon:FormatNumber(num)
 	num = tonumber(num);
 	
 	if(num > 1000000) then
@@ -1064,176 +398,403 @@ local function kilofy(num)
 	return num;
 end
 
-function A:OutputExperience()
-	if(not A:IsPlayerMaxLevel()) then
-		local current_xp, max_xp = UnitXP("player"), UnitXPMax("player");
-		local remaining_xp = max_xp - current_xp;
-		local rested_xp = GetXPExhaustion() or 0;
-
-		local rested_xp_percent = floor(((rested_xp / max_xp) * 100) + 0.5);
-		
-		local max_xp_text = kilofy(max_xp);
-		local current_xp_text = kilofy(current_xp);
-		local remaining_xp_text = kilofy(remaining_xp);
-
-		local xp_text = string.format("Currently level %d with %s/%s (%d%%) %s xp to go (%d%% rested)", 
-					UnitLevel("player"),
-					current_xp_text,
-					max_xp_text, 
-					math.ceil((current_xp / max_xp) * 100), 
-					remaining_xp_text, 
-					rested_xp_percent);
-
-		if(IsShiftKeyDown()) then
-			ChatFrame_OpenChat(xp_text);
-		else
-			DEFAULT_CHAT_FRAME.editBox:SetText(xp_text)
-		end
-	else
-		print("Max level reached.");
-	end
-end
-
-function A:OutputReputation()
-	local name, standing, min_rep, max_rep, rep_value, factionID = GetWatchedFactionInfo();
+function Addon:SendModuleChatMessage()
+	local module = Addon:GetActiveModule();
+	if(not module) then return end
 	
-	if(not name) then
-		DEFAULT_CHAT_FRAME:AddMessage("|cffffcc00Experiencer|r No watched reputation.");
+	local hasMessage, reason = module:HasChatMessage();
+	if(not hasMessage) then
+		DEFAULT_CHAT_FRAME:AddMessage(("|cfffaad07Experiencer|r %s"):format(reason));
 		return;
 	end
 	
-	local remaining_rep = max_rep - rep_value;
-	local progress = (rep_value - min_rep) / (max_rep - min_rep)
+	local msg = module:GetChatMessage();
 	
-	local standing_text = "";
-	local friend_text = select(7, GetFriendshipReputation(factionID));
-	
-	if(not friend_text) then
-		standing_text = _G['FACTION_STANDING_LABEL' .. standing];
+	if(IsControlKeyDown()) then
+		ChatFrame_OpenChat(msg);
 	else
-		-- standing_text = friend_standing[standing];
-		standing_text = select(7, GetFriendshipReputation(factionID));
-	end
-	
-	local rep_text = string.format("%s with %s: %s/%s (%d%%) with %s to go",
-						standing_text,
-						name,
-						BreakUpLargeNumbers(rep_value - min_rep),
-						BreakUpLargeNumbers(max_rep - min_rep),
-						progress * 100,
-						BreakUpLargeNumbers(remaining_rep));
-	
-	if(IsShiftKeyDown()) then
-		ChatFrame_OpenChat(rep_text);
-	else
-		DEFAULT_CHAT_FRAME.editBox:SetText(rep_text);
+		DEFAULT_CHAT_FRAME.editBox:SetText(msg)
 	end
 end
 
-function A:CalculateHourlyXP()
-	local hourlyXP, timeToLevel = 0, 0;
-	
-	local logged_time = time() - (A.Session.LoginTime + math.floor(A.Session.PausedTime));
-	local coeff = logged_time / 3600;
-	
-	if(coeff ~= 0 and A.Session.ExperienceGained > 0) then
-		hourlyXP = math.ceil(A.Session.ExperienceGained / coeff);
-		timeToLevel = (UnitXPMax("player") - UnitXP("player")) / hourlyXP * 3600;
+function Addon:ToggleTextVisilibity(visibility, noAnimation)
+	if(visibility) then
+		self.db.char.TextVisibility = visibility;
+	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+		self.db.char.TextVisibility = TEXT_VISIBILITY_ALWAYS;
+	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+		self.db.char.TextVisibility = TEXT_VISIBILITY_HOVER;
 	end
 	
-	return hourlyXP, timeToLevel
+	if(not noAnimation) then
+		if(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+			ExperiencerBarTextFrame.fadeout:Stop();
+			ExperiencerBarTextFrame.fadein:Play();
+		else
+			ExperiencerBarTextFrame.fadein:Stop();
+			ExperiencerBarTextFrame.fadeout:Play();
+		end
+	end
 end
 
 function Experiencer_OnMouseDown(self, button)
+	CloseMenus();
+	
 	if(button == "LeftButton") then
-		if(A.db.profile.Enabled) then
-			if(A.db.profile.Mode == EXPERIENCER_MODE_XP) then
-				A:OutputExperience();
-			else
-				A:OutputReputation();
-			end
-		end
-		
-	elseif(button == "MiddleButton") then
 		if(IsShiftKeyDown()) then
-			if(IsControlKeyDown() and not A:IsPlayerMaxLevel()) then
-				if(A.db.profile.Mode == EXPERIENCER_MODE_XP) then
-					A:SetMode(EXPERIENCER_MODE_REP);
-				else
-					A:SetMode(EXPERIENCER_MODE_XP);
-				end
-			else
-				A.db.profile.Enabled = not A.db.profile.Enabled;
-				A:ToggleVisibility(A.db.profile.Enabled);
-			end
-		else
-			A.db.profile.StickyText = not A.db.profile.StickyText;
-			
-			if(A.db.profile.StickyText) then
-				ExperiencerBarText:Show();
-			end
+			Addon:SendModuleChatMessage();
+		elseif(IsControlKeyDown()) then
+			Addon:ToggleVisibility();
 		end
-		
-		CloseMenus();
-		
-	elseif(button == "RightButton") then
-		A:OpenContextMenu()
+	end
+	
+	if(button == "MiddleButton" and Addon.db.char.TextVisibility ~= TEXT_VISIBILITY_HIDE) then
+		Addon:ToggleTextVisilibity(nil, true);
+	end
+	
+	if(button == "RightButton") then
+		Addon:OpenContextMenu(self);
 	end
 end
 
-function Experiencer_OnEnter(self)
-	if(not A.db.profile.Enabled) then return end
+function Addon:CheckDisabledStatus()
+	if(Addon:GetActiveModule():IsDisabled()) then
+		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+		Addon.db.char.ActiveModule = Addon:FindActiveModule(currentIndex, 1).id;
+	end
+end
+
+function Addon:FindActiveModule(currentIndex, direction, findNext)
+	findNext = findNext or false;
+	direction = direction or 1;
+	local newIndex = currentIndex;
 	
-	if(not A.db.profile.StickyText) then
-		UIFrameFadeIn(ExperiencerBarText, 0.1, 0, 1);
+	if(Addon.orderedModules[newIndex]:IsDisabled() or findNext) then
+		repeat
+			newIndex = newIndex + direction;
+			if(newIndex > #Addon.orderedModules) then newIndex = 1 end
+			if(newIndex < 1) then newIndex = #Addon.orderedModules end
+		until(not Addon.orderedModules[newIndex]:IsDisabled());
+	end
+	
+	return Addon.orderedModules[newIndex];
+end
+
+function Experiencer_OnMouseWheel(self, delta)
+	if(IsControlKeyDown()) then
+		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+		
+		local newModule = Addon:FindActiveModule(currentIndex, -delta, true);
+		Addon.db.char.ActiveModule = newModule.id;
+		
+		Addon:UpdateBars(true);
+		Addon:UpdateText();
+	end
+end
+
+function Addon:GetAnchors(frame)
+	local B, T = "BOTTOM", "TOP";
+	local x, y = frame:GetCenter();
+	
+	if(y < _G.GetScreenHeight() / 2) then
+		return B, T, 1;
+	else
+		return T, B, -1;
+	end
+end
+
+function Addon:OpenContextMenu(anchorFrame)
+	if(InCombatLockdown()) then return end
+	anchorFrame = anchorFrame or ExperiencerFrameBars.main;
+	
+	if(not Addon.ContextMenu) then
+		Addon.ContextMenu = CreateFrame("Frame", "ExperiencerContextMenuFrame", UIParent, "UIDropDownMenuTemplate");
+	end
+	
+	local usedClassColor;
+	
+	local swatchFunc = function()
+		if(usedClassColor == nil) then
+			usedClassColor = self.db.global.Color.UseClassColor;
+			self.db.global.Color.UseClassColor = false;
+		end
+		
+		local r, g, b = ColorPickerFrame:GetColorRGB();
+		self.db.global.Color.r = r;
+		self.db.global.Color.g = g;
+		self.db.global.Color.b = b;
+		Addon:UpdateFrames();
+		
+	end
+	
+	local cancelFunc = function(values)
+		if(usedClassColor == true) then
+			self.db.global.Color.UseClassColor = true;
+		end
+		usedClassColor = nil;
+		
+		self.db.global.Color.r = values.r;
+		self.db.global.Color.g = values.g;
+		self.db.global.Color.b = values.b;
+		Addon:UpdateFrames();
+	end
+	
+	local menudata = {
+		{
+			text = "Experiencer Options",
+			isTitle = true,
+			notCheckable = true,
+		},
+		{
+			text = ("%s bar"):format(self.db.char.Visible and "Hide" or "Show"),
+			func = function()
+				Addon:ToggleVisibility();
+			end,
+			notCheckable = true,
+		},
+		{
+			text = "Flash when able to level up",
+			func = function()
+				self.db.char.FlashLevelUp = not self.db.char.FlashLevelUp;
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.FlashLevelUp; end,
+			isNotRadio = true,
+			tooltipTitle = "Flash when able to level up",
+			tooltipText = "Used for Artifact and Honor",
+			tooltipOnButton = 1,
+		},
+		{
+			text = "Always show text",
+			func = function()
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_ALWAYS);
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS; end,
+		},
+		{
+			text = "Show text on hover",
+			func = function()
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_HOVER);
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER; end,
+		},
+		{
+			text = "Always hide text",
+			func = function()
+				Addon:ToggleTextVisilibity(TEXT_VISIBILITY_HIDE);
+				Addon:OpenContextMenu();
+			end,
+			checked = function() return self.db.char.TextVisibility == TEXT_VISIBILITY_HIDE; end,
+		},
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
+			text = "Frame Options",
+			notCheckable = true,
+			hasArrow = true,
+			menuList = {
+				{
+					text = "Frame Options", isTitle = true, notCheckable = true,
+				},
+				{
+					text = "Enlarge Experiencer Bar",
+					func = function()
+						self.db.global.BigBars = not self.db.global.BigBars;
+						Addon:UpdateFrames();
+					end,
+					checked = function() return self.db.global.BigBars; end,
+					isNotRadio = true,
+				},
+				{
+					text = " ", isTitle = true, notCheckable = true,
+				},
+				{
+					text = "Bar Color", isTitle = true, notCheckable = true,
+				},
+				{
+					text = "Use class color",
+					func = function()
+						self.db.global.Color.UseClassColor = true;
+						Addon:UpdateFrames();
+					end,
+					checked = function() return self.db.global.Color.UseClassColor; end,
+				},
+				{
+					text = "Use custom color",
+					func = function()
+						self.db.global.Color.UseClassColor = false;
+						Addon:UpdateFrames();
+					end,
+					checked = function() return not self.db.global.Color.UseClassColor; end,
+				},
+				{
+					text = "Set custom color",
+					func = function()
+						local info = {};
+						info.swatchFunc = swatchFunc;
+						info.cancelFunc = cancelFunc;
+						info.r = self.db.global.Color.r;
+						info.g = self.db.global.Color.g;
+						info.b = self.db.global.Color.b;
+						OpenColorPicker(info);
+						CloseMenus();
+					end,
+					notCheckable = true,
+					swatchFunc = swatchFunc,
+					cancelFunc = cancelFunc,
+					hasColorSwatch = true,
+					r = self.db.global.Color.r,
+					g = self.db.global.Color.g,
+					b = self.db.global.Color.b,
+				},
+				{
+					text = " ", isTitle = true, notCheckable = true,
+				},
+				{
+					text = "Frame Anchor", isTitle = true, notCheckable = true,
+				},
+				{
+					text = "Anchor to Bottom",
+					func = function()
+						self.db.global.AnchorPoint = "BOTTOM";
+						Addon:UpdateFrames();
+					end,
+					checked = function() return self.db.global.AnchorPoint == "BOTTOM"; end,
+				},
+				{
+					text = "Anchor to Top",
+					func = function()
+						self.db.global.AnchorPoint = "TOP";
+						Addon:UpdateFrames();
+					end,
+					checked = function() return self.db.global.AnchorPoint == "TOP"; end,
+				},
+			},
+		},
+		{
+			text = "", isTitle = true, notCheckable = true,
+		},
+	};
+	
+	tinsert(menudata, {
+		text = "Displayed Bar",
+		isTitle = true,
+		notCheckable = true,
+	});
+	
+	for index, module in pairs(Addon.orderedModules) do
+		local menutext = module.name;
+		
+		if(module:IsDisabled()) then
+			menutext = string.format("%s |cffcccccc(inactive)|r", menutext);
+		end
+		
+		tinsert(menudata, {
+			text = menutext,
+			func = function()
+				self.db.char.ActiveModule = module.id;
+				Addon:UpdateBars(true);
+				Addon:UpdateText();
+			end,
+			checked = function()
+				return self.db.char.ActiveModule == module.id;
+			end,
+			hasArrow = true,
+			menuList = module:GetOptionsMenu() or {},
+			disabled = module:IsDisabled(),
+		});
+	end
+	
+	tinsert(menudata, { text = "", isTitle = true, notCheckable = true, });
+	tinsert(menudata, {
+		text = "Close",
+		func = function() CloseMenus(); end,
+		notCheckable = true,
+	});
+	
+	Addon.ContextMenu:SetPoint("BOTTOM", anchorFrame, "TOP", 0, 0);
+	EasyMenu(menudata, Addon.ContextMenu, "cursor", 0, 0, "MENU");
+	
+	local mouseX, mouseY = GetCursorPosition();
+	local scale = UIParent:GetEffectiveScale();
+	
+	local point, relativePoint, sign = Addon:GetAnchors(anchorFrame);
+	
+	DropDownList1:ClearAllPoints();
+	DropDownList1:SetPoint(point, anchorFrame, relativePoint, mouseX / scale - GetScreenWidth() / 2, 5 * sign);
+end
+
+function Experiencer_OnEnter(self)
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+		ExperiencerBarTextFrame.fadeout:Stop();
+		ExperiencerBarTextFrame.fadein:Play();
 	end
 end
 
 function Experiencer_OnLeave(self)
-	if(not A.db.profile.Enabled) then return end
-	
-	if(not A.db.profile.StickyText) then
-		UIFrameFadeOut(ExperiencerBarText, 0.1, 1, 0);
+	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+		ExperiencerBarTextFrame.fadein:Stop();
+		ExperiencerBarTextFrame.fadeout:Play();
 	end
 end
 
 function Experiencer_OnUpdate(self, elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
 	
-	if(A.db and A.db.profile.Mode == EXPERIENCER_MODE_XP and self.elapsed >= 2.0) then
-		self.elapsed = 0;
-		A:RefreshBar();
+	for _, module in pairs(Addon.modules) do
+		module:Update(elapsed);
 	end
 	
-	local lastPaused = A.Session.Paused;
-	A.Session.Paused = UnitIsAFK("player");
+	local current = ExperiencerFrameBars.main:GetContinuousAnimatedValue();
+	local minvalue, maxvalue = ExperiencerFrameBars.main:GetMinMaxValues();
+	ExperiencerFrameBars.color:SetValue(current);
 	
-	if(A.Session.Paused and lastPaused ~= A.Session.Paused) then
-		A:RefreshBar();
-	elseif(not A.Session.Paused and lastPaused ~= A.Session.Paused) then
-		A.Session.LoginTime = A.Session.LoginTime + math.floor(A.Session.PausedTime);
-		A.Session.PausedTime = 0;
+	local progress = (current - minvalue) / (maxvalue - minvalue);
+	
+	if(progress > 0) then
+		ExperiencerFrameBars.main.spark:Show();
+		ExperiencerFrameBars.main.spark:ClearAllPoints();
+		ExperiencerFrameBars.main.spark:SetPoint("CENTER", ExperiencerFrameBars.main, "LEFT", progress * ExperiencerFrameBars.main:GetWidth(), 0);
+	else
+		ExperiencerFrameBars.main.spark:Hide();
 	end
 	
-	if(A.Session.Paused) then
-		A.Session.PausedTime = A.Session.PausedTime + elapsed;
-	end
-	
-	if(A.db and A.db.global.KeepSessionData) then
-		A.db.profile.Session.Exists = true;
-		
-		A.db.profile.Session.Time = time() - (A.Session.LoginTime + math.floor(A.Session.PausedTime));
-		A.db.profile.Session.TotalXP = A.Session.ExperienceGained;
-		A.db.profile.Session.AverageQuestXP = A.Session.AverageQuestXP;
-	end
-	
-	A.GainUpdateTimer = A.GainUpdateTimer + elapsed;
-	
-	if(A.GainUpdateTimer >= 1.0) then
-		local current_value = ExperiencerBar:GetValue();
-		
-		ExperiencerBar:SetValue(current_value + (A.TargetValue - current_value) / 17);
-		ExperiencerColorBar:SetValue(current_value + (A.TargetValue - current_value) / 17);
+	if(Addon.db.global.FlashLevelUp) then
+		local module = Addon:GetActiveModule();
+		if(module.levelUpRequiresAction) then
+			if(progress >= 1 and not ExperiencerFrameBars.highlight:IsVisible()) then
+				ExperiencerFrameBars.highlight.fadein:Play();
+			elseif(progress < 1 and ExperiencerFrameBars.highlight:IsVisible()) then
+				ExperiencerFrameBars.highlight.flash:Stop();
+				ExperiencerFrameBars.highlight.fadeout:Play();
+			end
+		end
 	end
 end
 
+local DAY_ABBR, HOUR_ABBR = gsub(DAY_ONELETTER_ABBR, "%%d%s*", ""), gsub(HOUR_ONELETTER_ABBR, "%%d%s*", "");
+local MIN_ABBR, SEC_ABBR = gsub(MINUTE_ONELETTER_ABBR, "%%d%s*", ""), gsub(SECOND_ONELETTER_ABBR, "%%d%s*", "");
+
+local DHMS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", DAY_ABBR, "%02d", HOUR_ABBR, "%02d", MIN_ABBR, "%02d", SEC_ABBR)
+local  HMS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", HOUR_ABBR, "%02d", MIN_ABBR, "%02d", SEC_ABBR)
+local   MS = format("|cffffffff%s|r|cffffcc00%s|r |cffffffff%s|r|cffffcc00%s|r", "%d", MIN_ABBR, "%02d", SEC_ABBR)
+local    S = format("|cffffffff%s|r|cffffcc00%s|r", "%d", SEC_ABBR)
+
+function Addon:FormatTime(t)
+	if not t then return end
+
+	local d, h, m, s = floor(t / 86400), floor((t % 86400) / 3600), floor((t % 3600) / 60), floor(t % 60)
+	
+	if d > 0 then
+		return format(DHMS, d, h, m, s)
+	elseif h > 0 then
+		return format(HMS, h, m ,s)
+	elseif m > 0 then
+		return format(MS, m, s)
+	else
+		return format(S, s)
+	end
+end
