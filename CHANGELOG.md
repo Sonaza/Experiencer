@@ -1,3 +1,6 @@
+## 2.0.2
+* Fixed the small gap when anchoring to the top of the screen.
+
 ## 2.0.1
 * Fixed reputation module glitchiness when not tracking any reputations.
 

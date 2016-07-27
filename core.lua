@@ -180,9 +180,13 @@ function Addon:UpdateFrames()
 	end
 	
 	local anchor = Addon.db.global.AnchorPoint or "BOTTOM";
+	local offset = 0;
+	if(anchor == "TOP") then offset = 1 end
+	if(anchor == "BOTTOM") then offset = -1 end
+	
 	ExperiencerFrame:ClearAllPoints();
-	ExperiencerFrame:SetPoint(anchor .. "LEFT", UIParent, anchor .. "LEFT", 0, -1);
-	ExperiencerFrame:SetPoint(anchor .. "RIGHT", UIParent, anchor .. "RIGHT", 0, -1);
+	ExperiencerFrame:SetPoint(anchor .. "LEFT", UIParent, anchor .. "LEFT", 0, offset);
+	ExperiencerFrame:SetPoint(anchor .. "RIGHT", UIParent, anchor .. "RIGHT", 0, offset);
 	ExperiencerBarTextFrame:ClearAllPoints();
 	ExperiencerBarTextFrame:SetPoint(anchor, ExperiencerFrameBars, anchor);
 	
