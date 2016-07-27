@@ -4,7 +4,7 @@ Experience bar replacement for World of Warcraft.
 ## Description
 Experiencer is a minimum configuration required experience bar addon. It adds multi purpose experience, reputation, artifact power and honor progress bar to the bottom or the top of the screen.
 
-Note that because the Experiencer bar can **only be anchored to top or the bottom of the screen** it may overlap with other frames positioned in those places.
+Note that because the Experiencer bar can **only be anchored to the top or the bottom of the screen** it may overlap with other frames positioned in those places.
 
 When tracking experience the addon will display your current rested percentage, remaining xp required to level and percentage of the same value. Once you start gaining experience it will display the total sum gained during the active session, experience per hour value, estimated time and number of quests to level. Additionally the number of experience points player will gain after turning in all completed quests (and optionally incomplete quests) is displayed with an accompanying visualizer bar. Session values are saved even when you log out, to reset them you must do so from the options menu.
 
