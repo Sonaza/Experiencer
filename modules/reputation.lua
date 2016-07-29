@@ -44,6 +44,9 @@ local BODYGUARD_FACTIONS = {
 function module:Initialize()
 	module:RegisterEvent("UPDATE_FACTION");
 	module:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE");
+	
+	local name = GetWatchedFactionInfo();
+	module.Tracked = name;
 end
 
 function module:IsDisabled()
