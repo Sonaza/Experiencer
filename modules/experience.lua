@@ -600,13 +600,6 @@ end
 function module:PLAYER_LEVEL_UP(event, level)
 	if(module:IsPlayerMaxLevel(level)) then
 		Addon:CheckDisabledStatus();
-		
-		module:UnregisterEvent("CHAT_MSG_SYSTEM");
-		module:UnregisterEvent("PLAYER_XP_UPDATE");
-		
-		module:UnregisterEvent("UNIT_INVENTORY_CHANGED");
-		module:UnregisterEvent("QUEST_LOG_UPDATE");
-		module:UnregisterEvent("UNIT_AURA");
 	else
 		module.session.MaxXP = UnitXPMax("player");
 		

@@ -1,3 +1,6 @@
+## 2.0.4
+* Fixed bug with experience module when reaching level cap.
+
 ## 2.0.3
 * Attempted fix to reputation animation not playing for first reputation gain after login.
 * Fixed error with animation speed when leveling up.
