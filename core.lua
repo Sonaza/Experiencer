@@ -323,8 +323,15 @@ function Addon:UpdateBars(instant)
 	
 	if(hasChanged) then
 		if(Addon.PreviousData and not isLoss) then
-			local diff = (data.current - Addon.PreviousData.current) / data.max;
-			local speed = diff * 1.2 + 1.0;
+			local current = data.current;
+			local previous = Addon.PreviousData.current;
+			
+			if(not moduleChanged and Addon.PreviousData.level < data.level) then
+				current = current + Addon.PreviousData.max;
+			end
+			
+			local diff = (current - previous) / data.max;
+			local speed = math.max(1, math.min(10, diff * 1.2 + 1.0));
 			speed = speed * speed;
 			Addon:SetAnimationSpeed(speed);
 		end
