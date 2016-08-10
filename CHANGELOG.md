@@ -1,8 +1,6 @@
-## 2.0.4
-* Fixed error with animation speed when leveling up.
-
 ## 2.0.3
-* Fixed reputation animation not playing for first reputation gain after login.
+* Attempted fix to reputation animation not playing for first reputation gain after login.
+* Fixed error with animation speed when leveling up.
 
 ## 2.0.2
 * Fixed the small gap when anchoring to the top of the screen.
