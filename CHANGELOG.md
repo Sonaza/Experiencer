@@ -1,3 +1,6 @@
+## 2.0.4
+* Fixed error with animation speed when leveling up.
+
 ## 2.0.3
 * Fixed reputation animation not playing for first reputation gain after login.
 
