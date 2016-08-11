@@ -1,3 +1,7 @@
+## 2.0.5
+* Clamp drop down menu within screen area.
+* Fixed experience bar for when expansion releases (to work without relogin or reload, obviously untested though).
+
 ## 2.0.4
 * Fixed bug with experience module when reaching level cap.
 

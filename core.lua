@@ -736,6 +736,7 @@ function Addon:OpenContextMenu(anchorFrame)
 	
 	DropDownList1:ClearAllPoints();
 	DropDownList1:SetPoint(point, anchorFrame, relativePoint, mouseX / scale - GetScreenWidth() / 2, 5 * sign);
+	DropDownList1:SetClampedToScreen(true);
 end
 
 function Experiencer_OnEnter(self)
