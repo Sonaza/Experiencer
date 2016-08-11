@@ -94,6 +94,10 @@ function module:Initialize()
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	self:RegisterEvent("QUEST_LOG_UPDATE");
 	
+	self:RegisterEvent("UPDATE_EXPANSION_LEVEL");
+	
+	module.playerCanLevel = not module:IsPlayerMaxLevel();
+	
 	module:RestoreSession();
 end
 
@@ -382,7 +386,7 @@ function module:ResetSession()
 end
 
 function module:IsPlayerMaxLevel(level)
-	return MAX_PLAYER_LEVEL == (level or UnitLevel("player"));
+	return MAX_PLAYER_LEVEL_TABLE[GetExpansionLevel()] == (level or UnitLevel("player"));
 end
 
 function module:CalculateHourlyXP()
@@ -522,6 +526,13 @@ function module:CalculateQuestLogXP()
 	return completeXP * multiplier, incompleteXP * multiplier, (completeXP + incompleteXP) * multiplier;
 end
 
+function module:UPDATE_EXPANSION_LEVEL()
+	if(not playerCanLevel and not module:IsPlayerMaxLevel()) then
+		DEFAULT_CHAT_FRAME:AddMessage(("|cfffaad07Experiencer|r %s"):format("Expansion level upgraded, you are able to gain experience again."));
+	end
+	module.playerCanLevel = not module:IsPlayerMaxLevel();
+end
+
 function module:QUEST_LOG_UPDATE()
 	Addon:UpdateText();
 end
@@ -606,4 +617,6 @@ function module:PLAYER_LEVEL_UP(event, level)
 		local remaining_xp = module.session.MaxXP - UnitXP("player");
 		module.session.QuestsToLevel = ceil(remaining_xp / module.session.AverageQuestXP) - 1;
 	end
+	
+	module.playerCanLevel = not module:IsPlayerMaxLevel(level);
 end
