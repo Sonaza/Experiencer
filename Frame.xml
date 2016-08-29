@@ -59,15 +59,25 @@
 			<Frame name="$parentBars" parentKey="bars" setAllPoints="true" hidden="true">
 				<Frames>
 					<StatusBar name="$parentRested" parentKey="rested" inherits="ExperiencerBarTemplate" hidden="true"/>
-					<StatusBar name="$parentVisual" parentKey="visual" inherits="ExperiencerBarTemplate" hidden="true">
+					<StatusBar name="$parentVisualPrimary" parentKey="visualPrimary" inherits="ExperiencerBarTemplate" hidden="true">
 						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStriped" horizTile="true" alphaMode="ADD"/>
+					</StatusBar>
+					<StatusBar name="$parentVisualSecondary" parentKey="visualSecondary" inherits="ExperiencerBarTemplate" hidden="true">
+						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStripedOpposite" horizTile="true" alphaMode="ADD"/>
 					</StatusBar>
 					<StatusBar name="$parentChange" parentKey="change" inherits="ExperiencerBarTemplate">
 						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
 						<Animations>
 							<AnimationGroup parentKey="fadegain" setToFinalAlpha="true">
-								<Alpha fromAlpha="0" toAlpha="1" duration="0.4" order="1" smoothing="IN_OUT"/>
-								<Alpha fromAlpha="1" toAlpha="0" duration="0.6" order="2" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="0" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
+							</AnimationGroup>
+							<AnimationGroup parentKey="fadegain_in" setToFinalAlpha="true">
+								<Alpha fromAlpha="0" toAlpha="1" duration="0.25" order="1" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="1" toAlpha="1" duration="1.00" order="2" smoothing="IN_OUT"/>
+							</AnimationGroup>
+							<AnimationGroup parentKey="fadegain_out" setToFinalAlpha="true">
+								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="1" smoothing="IN_OUT"/>
 							</AnimationGroup>
 							<AnimationGroup parentKey="fadeloss" setToFinalAlpha="true">
 								<Alpha fromAlpha="1" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>

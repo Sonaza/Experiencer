@@ -5,21 +5,19 @@
 ------------------------------------------------------------
 
 local ADDON_NAME, Addon = ...;
-local _;
 
-local module = Addon:NewModule("artifact");
-
-module.name     = "Artifact";
-module.order    = 3;
+local module = Addon:RegisterModule("artifact", {
+	label       = "Artifact",
+	order       = 3,
+	savedvars   = {
+		global = {
+			ShowArtifactName = true,
+			ShowRemaining = true,
+		},
+	},
+});
 
 module.levelUpRequiresAction = true;
-
-module.savedvars = {
-	global = {
-		ShowArtifactName = true,
-		ShowRemaining = true,
-	},
-}
 
 function module:Initialize()
 	self:RegisterEvent("ARTIFACT_XP_UPDATE");
@@ -27,14 +25,35 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	-- return not HasArtifactEquipped();
-	
-	-- If player doesn't have Legion on their account or isn't high level enough
-	return GetExpansionLevel() < 6 or UnitLevel("player") < 100; 
+	-- If player doesn't have Legion on their account or hasn't completed first quest of artifact chain
+	return GetExpansionLevel() < 6 or not module:HasCompletedArtifactIntro();
 end
 
 function module:Update(elapsed)
 	
+end
+
+function module:HasCompletedArtifactIntro()
+	local quests = {
+		40408, -- Paladin
+		40579, -- Warrior
+		40618, -- Hunter
+		40636, -- Monk
+		40646, -- Druid
+		40684, -- Warlock
+		40706, -- Priest
+		40715, -- Death Knight
+		40814, -- Demon Hunter
+		40840, -- Rogue
+		41085, -- Mage
+		41335, -- Shaman
+	};
+	
+	for _, questID in ipairs(quests) do
+		if(IsQuestFlaggedCompleted(questID)) then return true end
+	end
+	
+	return false;
 end
 
 function module:GetText()
@@ -60,11 +79,11 @@ function module:GetText()
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(outputText,
-			("%s%s|r (%s%d|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
+			("%s%s|r (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
 		);
 	else
 		tinsert(outputText,
-			("%s%s|r / %s (%s%d|r%%)"):format(progressColor, BreakUpLargeNumbers(artifactXP), BreakUpLargeNumbers(xpForNextPoint), progressColor, 100 - progress * 100)
+			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(artifactXP), BreakUpLargeNumbers(xpForNextPoint), progressColor, progress * 100)
 		);
 	end
 	

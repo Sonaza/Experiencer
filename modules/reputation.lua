@@ -7,27 +7,23 @@
 local ADDON_NAME, Addon = ...;
 local _;
 
-local module = Addon:NewModule("reputation");
-
-module.name     = "Reputation";
-module.order    = 2;
-
-module.savedvars = {
-	char = {
-		
-	},
-	global = {
-		ShowRemaining = true,
-		ShowGainedRep = true,
-		
-		AutoWatch = {
-			Enabled = false,
-			IgnoreGuild = true,
-			IgnoreInactive = true,
-			IgnoreBodyguard = true,
+local module = Addon:RegisterModule("reputation", {
+	label 	    = "Reputation",
+	order       = 2,
+	savedvars   = {
+		global = {
+			ShowRemaining = true,
+			ShowGainedRep = true,
+			
+			AutoWatch = {
+				Enabled = false,
+				IgnoreGuild = true,
+				IgnoreInactive = true,
+				IgnoreBodyguard = true,
+			},
 		},
 	},
-};
+});
 
 module.recentReputations = {};
 
@@ -86,11 +82,11 @@ function module:GetText()
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(outputText,
-			string.format("%s (%s): %s%s|r (%s%d|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
+			string.format("%s (%s): %s%s|r (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
 		);
 	else
 		tinsert(outputText,
-			string.format("%s (%s): %s%s|r / %s (%s%d|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, 100 - progress * 100)
+			string.format("%s (%s): %s%s|r / %s (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, progress * 100)
 		);
 	end
 	

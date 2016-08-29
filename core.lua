@@ -8,6 +8,8 @@ local ADDON_NAME = ...;
 local Addon = LibStub("AceAddon-3.0"):NewAddon(select(2, ...), ADDON_NAME, "AceEvent-3.0", "AceHook-3.0");
 _G[ADDON_NAME] = Addon;
 
+Addon:SetDefaultModuleLibraries("AceEvent-3.0");
+
 local AceDB = LibStub("AceDB-3.0");
 
 local TEXT_VISIBILITY_HIDE      = 1;
@@ -49,7 +51,8 @@ function Addon:OnEnable()
 	Addon:InitializeModules();
 	
 	-- Just cycle through modules and set current active that is not disabled
-	local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+	local activeModule = Addon:GetActiveModule();
+	local currentIndex = activeModule.order;
 	local newModule = Addon:FindActiveModule(currentIndex, 1);
 	Addon.db.char.ActiveModule = newModule.id;
 	
@@ -65,53 +68,50 @@ function Addon:IsBarVisible()
 	return self.db.char.Visible;
 end
 
-Addon.modules           = {};
 Addon.orderedModules    = {};
-Addon.eventframes       = {};
 
-setmetatable(Addon.modules, {
-	__newindex = function(self, moduleID, module)
-		if(type(module) ~= "table") then
-			error("Unable to create new index: type is not a table", 2);
-		end
+-- setmetatable(Addon.modules, {
+-- 	__newindex = function(self, moduleID, module)
+-- 		if(type(module) ~= "table") then
+-- 			error("Unable to create new index: type is not a table", 2);
+-- 		end
 		
-		Addon.eventframes[moduleID] = CreateFrame("Frame");
-		Addon.eventframes[moduleID]:SetScript("OnEvent", function(self, event, ...)
-			if(module[event]) then
-				module[event](module, event, ...);
-			end
-		end);
+-- 		Addon.eventframes[moduleID] = CreateFrame("Frame");
+-- 		Addon.eventframes[moduleID]:SetScript("OnEvent", function(self, event, ...)
+-- 			if(module[event]) then
+-- 				module[event](module, event, ...);
+-- 			end
+-- 		end);
 		
-		rawset(self, moduleID, module);
-	end
-});
+-- 		rawset(self, moduleID, module);
+-- 	end
+-- });
 
-function Addon:NewModule(moduleID, module)
-	if(Addon.modules[moduleID]) then
-		error(("Addon:RegisterModule(moduleID[, module]): Module '%s' is already registered."):format(tostring(moduleID)), 2);
+
+function Addon:RegisterModule(moduleID, prototype)
+	if(Addon:GetModule(moduleID, true) ~= nil) then
+		error(("Addon:RegisterModule(moduleID[, prototype]): Module '%s' is already registered."):format(tostring(moduleID)), 2);
 		return;
 	end
 	
-	local module = module or {};
+	local module = Addon:NewModule(moduleID, prototype or {});
 	module.id = moduleID;
 	
-	Addon.modules[moduleID] = module;
-	
-	module.RegisterEvent = function(self, eventName)
-		if(not self[eventName]) then
-			error(("module:RegisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
-		else
-			Addon.eventframes[self.id]:RegisterEvent(eventName);
-		end
-	end
+	-- module.RegisterEvent = function(self, eventName)
+	-- 	if(not self[eventName]) then
+	-- 		error(("module:RegisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
+	-- 	else
+	-- 		Addon.eventframes[self.id]:RegisterEvent(eventName);
+	-- 	end
+	-- end
 
-	module.UnregisterEvent = function(self, eventName)
-		if(not self[eventName]) then
-			error(("module:UnregisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
-		else
-			Addon.eventframes[self.id]:UnregisterEvent(eventName);
-		end
-	end
+	-- module.UnregisterEvent = function(self, eventName)
+	-- 	if(not self[eventName]) then
+	-- 		error(("module:UnregisterEvent(eventName): Event '%s' is not found on body."):format(tostring(eventName)), 2);
+	-- 	else
+	-- 		Addon.eventframes[self.id]:UnregisterEvent(eventName);
+	-- 	end
+	-- end
 
 	module.Refresh = function(self, instant)
 		Addon:RefreshModule(self, instant);
@@ -125,7 +125,7 @@ function Addon:NewModule(moduleID, module)
 end
 
 function Addon:InitializeModules()
-	for moduleID, module in pairs(Addon.modules) do
+	for moduleID, module in Addon:IterateModules() do
 		Addon.orderedModules[module.order] = module;
 		
 		if(module.savedvars) then
@@ -160,7 +160,8 @@ end
 
 local FrameLevels = {
 	"ExperiencerFrameBarsRested",
-	"ExperiencerFrameBarsVisual",
+	"ExperiencerFrameBarsVisualSecondary",
+	"ExperiencerFrameBarsVisualPrimary",
 	"ExperiencerFrameBarsChange",
 	"ExperiencerFrameBarsMain",
 	"ExperiencerFrameBarsColor",
@@ -199,7 +200,8 @@ function Addon:UpdateFrames()
 	ExperiencerFrameBars.color:SetStatusBarColor(c.r, c.g, c.b, 0.23 + ib * 0.26); -- adjust color strength by brightness
 	ExperiencerFrameBars.rested:SetStatusBarColor(c.r, c.g, c.b, 0.3);
 	
-	ExperiencerFrameBars.visual:SetStatusBarColor(c.r, c.g, c.b, 0.375);
+	ExperiencerFrameBars.visualPrimary:SetStatusBarColor(c.r, c.g, c.b, 0.375);
+	ExperiencerFrameBars.visualSecondary:SetStatusBarColor(c.r, c.g, c.b, 0.375);
 	
 	-----------------------------
 	
@@ -257,10 +259,13 @@ function Addon:SetActiveModule(moduleID)
 end
 
 function Addon:GetActiveModule()
-	if(not Addon.modules[self.db.char.ActiveModule]) then
+	local activeModule = Addon:GetModule(self.db.char.ActiveModule, true);
+	if(not activeModule) then
 		error(("Addon:GetActiveModule(): Module '%s' is not registered."):format(tostring(self.db.char.ActiveModule)), 2);
+		return;
 	end
-	return Addon.modules[self.db.char.ActiveModule];
+	
+	return activeModule;
 end
 
 function Addon:SetAnimationSpeed(speed)
@@ -278,26 +283,29 @@ function Addon:SetAnimationSpeed(speed)
 		if(anim.delayPerDistance) then
 			anim.delayPerDistance = durationPerDistance;
 		end
-		
-		local animtype = anim:GetObjectType();
 	end
 end
 
-function Addon:UpdateBars(instant)
+function Addon:StopAnimation()
+	for index, anim in ipairs({ ExperiencerFrameBars.main.Anim:GetAnimations() }) do
+		anim:Stop();
+	end	
+end
+
+Addon.BufferModuleChanged = false;
+
+function Addon:TriggerBufferedUpdate(instant)
 	local module = Addon:GetActiveModule();
 	if(not module) then return end
 	
-	local moduleChanged = (module ~= Addon.PreviousModule);
-	Addon.PreviousModule = module;
-	
 	local data = module:GetBarData();
 	
-	local hasChanged = true;
+	local valueHasChanged = true;
 	
 	local isLoss = false;
 	local changeCurrent = data.current;
 	
-	if(Addon.PreviousData and not moduleChanged) then
+	if(Addon.PreviousData and not Addon.BufferModuleChanged) then
 		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
 			isLoss = true;
 			changeCurrent = Addon.PreviousData.current;
@@ -309,24 +317,26 @@ function Addon:UpdateBars(instant)
 		end
 		
 		if(data.current == Addon.PreviousData.current) then
-			hasChanged = false;
+			valueHasChanged = false;
 		end
 	end
 	
 	if(not isLoss) then
-		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.6;
+		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.01;
 	else
 		ExperiencerFrameBars.main.accumulationTimeoutInterval = 0.35;
 	end
 	
+	ExperiencerFrameBars.main.matchBarValueToAnimation = true;
+	
 	Addon:SetAnimationSpeed(1.0);
 	
-	if(hasChanged) then
+	if(valueHasChanged) then
 		if(Addon.PreviousData and not isLoss) then
 			local current = data.current;
 			local previous = Addon.PreviousData.current;
 			
-			if(not moduleChanged and Addon.PreviousData.level < data.level) then
+			if(not Addon.HasModuleChanged and Addon.PreviousData.level < data.level) then
 				current = current + Addon.PreviousData.max;
 			end
 			
@@ -346,41 +356,116 @@ function Addon:UpdateBars(instant)
 		ExperiencerFrameBars.main:ProcessChangesInstantly();
 	end
 	
-	ExperiencerFrameBars.color:SetMinMaxValues(data.min, data.max);
-	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue());
-	
-	ExperiencerFrameBars.change:SetMinMaxValues(data.min, data.max);
-	ExperiencerFrameBars.change:SetValue(changeCurrent);
-	
-	if(not instant and hasChanged) then
+	if(not instant and valueHasChanged) then
 		if(not isLoss) then
-			ExperiencerFrameBars.change.fadegain:Stop();
-			ExperiencerFrameBars.change.fadegain:Play();
-		else
-			ExperiencerFrameBars.change.fadeloss:Stop();
-			ExperiencerFrameBars.change.fadeloss:Play();
+			ExperiencerFrameBars.change.fadegain_in:Stop();
+			ExperiencerFrameBars.change.fadegain_out:Stop();
+			ExperiencerFrameBars.change.fadegain_out:Play();
 		end
 		ExperiencerFrameBars.main.spark.fade:Stop();
 		ExperiencerFrameBars.main.spark.fade:Play();
 	end
 	
-	if(data.rested) then
+	Addon.PreviousData = data;
+end
+
+function Addon:UpdateBars(instant)
+	local module = Addon:GetActiveModule();
+	if(not module) then return end
+	
+	Addon.HasModuleChanged = (module ~= Addon.PreviousModule);
+	Addon.PreviousModule = module;
+	
+	local data = module:GetBarData();
+	
+	local valueHasChanged = true;
+	
+	local isLoss = false;
+	local changeCurrent = data.current;
+	
+	if(Addon.PreviousData and not Addon.HasModuleChanged) then
+		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
+			isLoss = true;
+			changeCurrent = Addon.PreviousData.current;
+		end
+		
+		if(data.level < Addon.PreviousData.level) then
+			isLoss = true;
+			changeCurrent = data.max;
+		end
+		
+		if(data.current == Addon.PreviousData.current) then
+			valueHasChanged = false;
+		end
+	end
+	
+	if(instant or isLoss) then
+		Addon:TriggerBufferedUpdate(true);
+	else
+		Addon.HasBuffer = true;
+		Addon.BufferTimeout = 0.5;
+	end
+	
+	ExperiencerFrameBars.color:SetMinMaxValues(data.min, data.max);
+	ExperiencerFrameBars.color:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue());
+	
+	ExperiencerFrameBars.change:SetMinMaxValues(data.min, data.max);
+	if(not isLoss) then
+		Addon.ChangeTarget = changeCurrent;
+		if(not ExperiencerFrameBars.change.fadegain_in:IsPlaying()) then
+			ExperiencerFrameBars.change:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue());
+		end
+	else
+		Addon.ChangeTarget = ExperiencerFrameBars.main:GetContinuousAnimatedValue();
+		ExperiencerFrameBars.change:SetValue(changeCurrent);
+	end
+	
+	if(data.rested and data.rested > 0) then
 		ExperiencerFrameBars.rested:Show();
 		ExperiencerFrameBars.rested:SetMinMaxValues(data.min, data.max);
-		ExperiencerFrameBars.rested:SetValue(data.rested);
+		ExperiencerFrameBars.rested:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + data.rested);
 	else
 		ExperiencerFrameBars.rested:Hide();
 	end
 	
 	if(data.visual) then
-		ExperiencerFrameBars.visual:Show();
-		ExperiencerFrameBars.visual:SetMinMaxValues(data.min, data.max);
-		ExperiencerFrameBars.visual:SetValue(data.visual);
+		local primary, secondary;
+		if(type(data.visual) == "number") then
+			primary = data.visual;
+		elseif(type(data.visual) == "table") then
+			primary, secondary = unpack(data.visual);
+		end
+		
+		if(primary and primary > 0) then
+			ExperiencerFrameBars.visualPrimary:Show();
+			ExperiencerFrameBars.visualPrimary:SetMinMaxValues(data.min, data.max);
+			ExperiencerFrameBars.visualPrimary:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + primary);
+		else
+			ExperiencerFrameBars.visualPrimary:Hide();
+		end
+		
+		if(secondary and secondary > 0) then
+			ExperiencerFrameBars.visualSecondary:Show();
+			ExperiencerFrameBars.visualSecondary:SetMinMaxValues(data.min, data.max);
+			ExperiencerFrameBars.visualSecondary:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + secondary);
+		else
+			ExperiencerFrameBars.visualSecondary:Hide();
+		end
 	else
-		ExperiencerFrameBars.visual:Hide();
+		ExperiencerFrameBars.visualPrimary:Hide();
+		ExperiencerFrameBars.visualSecondary:Hide();
 	end
 	
-	Addon.PreviousData = data;
+	if(not instant and valueHasChanged) then
+		if(not isLoss) then
+			if(not ExperiencerFrameBars.change.fadegain_in:IsPlaying()) then
+				ExperiencerFrameBars.change.fadegain_in:Play();
+			end
+		else
+			ExperiencerFrameBars.change.fadeloss:Stop();
+			ExperiencerFrameBars.change.fadeloss:Play();
+		end
+	end
 end
 
 function Addon:UpdateText()
@@ -469,10 +554,15 @@ function Experiencer_OnMouseDown(self, button)
 end
 
 function Addon:CheckDisabledStatus()
-	if(Addon:GetActiveModule():IsDisabled()) then
-		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
-		Addon.db.char.ActiveModule = Addon:FindActiveModule(currentIndex, 1).id;
+	local activeModule = Addon:GetActiveModule();
+	if(activeModule and activeModule:IsDisabled()) then
+		local newModule = Addon:FindActiveModule(activeModule.order, 1).id;
+		Addon:SetModuleActive(newModule);
 	end
+end
+
+function Addon:SetModuleActive(moduleID)
+	Addon.db.char.ActiveModule = moduleID;
 end
 
 function Addon:FindActiveModule(currentIndex, direction, findNext)
@@ -493,10 +583,10 @@ end
 
 function Experiencer_OnMouseWheel(self, delta)
 	if(IsControlKeyDown()) then
-		local currentIndex = Addon.modules[Addon.db.char.ActiveModule].order;
+		local currentIndex = Addon:GetActiveModule().order;
 		
 		local newModule = Addon:FindActiveModule(currentIndex, -delta, true);
-		Addon.db.char.ActiveModule = newModule.id;
+		Addon:SetModuleActive(newModule.id);
 		
 		Addon:UpdateBars(true);
 		Addon:UpdateText();
@@ -697,7 +787,7 @@ function Addon:OpenContextMenu(anchorFrame)
 	});
 	
 	for index, module in pairs(Addon.orderedModules) do
-		local menutext = module.name;
+		local menutext = module.label;
 		
 		if(module:IsDisabled()) then
 			menutext = string.format("%s |cffcccccc(inactive)|r", menutext);
@@ -706,7 +796,7 @@ function Addon:OpenContextMenu(anchorFrame)
 		tinsert(menudata, {
 			text = menutext,
 			func = function()
-				self.db.char.ActiveModule = module.id;
+				Addon:SetActiveModule(module.id);
 				Addon:UpdateBars(true);
 				Addon:UpdateText();
 			end,
@@ -756,7 +846,46 @@ end
 function Experiencer_OnUpdate(self, elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
 	
-	for _, module in pairs(Addon.modules) do
+	if(Addon.HasBuffer) then
+		Addon.BufferTimeout = Addon.BufferTimeout - elapsed;
+		if(Addon.BufferTimeout <= 0.0) then
+			Addon:TriggerBufferedUpdate();
+			Addon.HasBuffer = false;
+		end
+	end
+	
+	local value = (Addon.ChangeTarget - ExperiencerFrameBars.change:GetValue()) * elapsed;
+	if(value >= 0) then
+		value = value / 0.175;
+	else
+		value = value / 0.325;
+	end
+	ExperiencerFrameBars.change:SetValue(ExperiencerFrameBars.change:GetValue() + value);
+	
+	if(Addon.PreviousData) then
+		if(ExperiencerFrameBars.rested:IsVisible() and Addon.PreviousData.rested) then
+			ExperiencerFrameBars.rested:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + Addon.PreviousData.rested);
+		end
+		
+		if(Addon.PreviousData.visual) then
+			local primary, secondary;
+			if(type(Addon.PreviousData.visual) == "number") then
+				primary = Addon.PreviousData.visual;
+			elseif(type(Addon.PreviousData.visual) == "table") then
+				primary, secondary = unpack(Addon.PreviousData.visual);
+			end
+			
+			if(ExperiencerFrameBars.visualPrimary:IsVisible() and primary) then
+				ExperiencerFrameBars.visualPrimary:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + primary);
+			end
+			
+			if(ExperiencerFrameBars.visualSecondary:IsVisible() and secondary) then
+				ExperiencerFrameBars.visualSecondary:SetValue(ExperiencerFrameBars.main:GetContinuousAnimatedValue() + secondary);
+			end
+		end
+	end
+	
+	for _, module in Addon:IterateModules() do
 		module:Update(elapsed);
 	end
 	
