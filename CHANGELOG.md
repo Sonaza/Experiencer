@@ -1,5 +1,6 @@
 ## 2.0.6
 * Changed bar updates to be buffered to make several consequential gains update properly.
+* Made animations even nicer.
 * Fixed percentage showing remaining number instead of current value when using current & max value text mode.
 * Fixed text not updating when resetting experience session.
 
