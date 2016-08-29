@@ -5,22 +5,20 @@
 ------------------------------------------------------------
 
 local ADDON_NAME, Addon = ...;
-local _;
 
-local module = Addon:NewModule("honor");
-
-module.name     = "Honor";
-module.order    = 4;
+local module = Addon:RegisterModule("honor", {
+	label       = "Honor",
+	order       = 4,
+	savedvars   = {
+		global = {
+			ShowHonorLevel  = true,
+			ShowPrestige    = true,
+			ShowRemaining   = true
+		},
+	},
+});
 
 local HONOR_UNLOCK_LEVEL = 110;
-
-module.savedvars = {
-	global = {
-		ShowHonorLevel  = true,
-		ShowPrestige    = true,
-		ShowRemaining   = true
-	}
-}
 
 function module:Initialize()
 	self:RegisterEvent("HONOR_XP_UPDATE");
@@ -70,11 +68,11 @@ function module:GetText()
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(outputText,
-			("%s%s|r (%s%d|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
+			("%s%s|r (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
 		);
 	else
 		tinsert(outputText,
-			("%s%s|r / %s (%s%d|r%%)"):format(progressColor, BreakUpLargeNumbers(honor), BreakUpLargeNumbers(honormax), progressColor, 100 - progress * 100)
+			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(honor), BreakUpLargeNumbers(honormax), progressColor, progress * 100)
 		);
 	end
 	
@@ -152,7 +150,7 @@ function module:GetBarData()
 		data.current  = 1;
 	end
 	
-	data.rested   = data.current + exhaustionThreshold;
+	data.rested   = exhaustionThreshold;
 	data.visual   = nil;
 	
 	return data;

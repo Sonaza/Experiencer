@@ -1,3 +1,8 @@
+## 2.0.6
+* Changed bar updates to be buffered to make several consequential gains update properly.
+* Fixed percentage showing remaining number instead of current value when using current & max value text mode.
+* Fixed text not updating when resetting experience session.
+
 ## 2.0.5
 * Clamp drop down menu within screen area.
 * Fixed experience bar for when expansion releases (to work without relogin or reload, obviously untested though).

@@ -7,35 +7,34 @@
 local ADDON_NAME, Addon = ...;
 local _;
 
-local module = Addon:NewModule("experience");
-
-module.name     = "Experience";
-module.order    = 1;
-
-module.savedvars = {
-	char = {
-		session = {
-			Exists = false,
-			Time = 0,
-			TotalXP = 0,
-			AverageQuestXP = 0,
+local module = Addon:RegisterModule("experience", {
+	label       = "Experience",
+	order       = 1,
+	savedvars   = {
+		char = {
+			session = {
+				Exists = false,
+				Time = 0,
+				TotalXP = 0,
+				AverageQuestXP = 0,
+			},
+		},
+		global = {
+			ShowRemaining = true,
+			ShowGainedXP = true,
+			ShowHourlyXP = true,
+			ShowTimeToLevel = true,
+			ShowQuestsToLevel = true,
+			KeepSessionData = true,
+			
+			QuestXP = {
+				ShowText = true,
+				AddIncomplete = false,
+				ShowVisualizer = true,
+			},
 		},
 	},
-	global = {
-		ShowRemaining = true,
-		ShowGainedXP = true,
-		ShowHourlyXP = true,
-		ShowTimeToLevel = true,
-		ShowQuestsToLevel = true,
-		KeepSessionData = true,
-		
-		QuestXP = {
-			ShowText = true,
-			AddIncomplete = false,
-			ShowVisualizer = true,
-		},
-	},
-};
+});
 
 module.session = {
 	LoginTime       = time(),
@@ -141,11 +140,11 @@ function module:GetText()
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(outputText,
-			string.format("%s%s|r (%s%d|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
+			string.format("%s%s|r (%s%.1f|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
 		);
 	else
 		tinsert(outputText,
-			string.format("%s%s|r / %s (%s%d|r%%)", progressColor, BreakUpLargeNumbers(current_xp), BreakUpLargeNumbers(max_xp), progressColor, 100 - progress * 100)
+			string.format("%s%s|r / %s (%s%.1f|r%%)", progressColor, BreakUpLargeNumbers(current_xp), BreakUpLargeNumbers(max_xp), progressColor, progress * 100)
 		);
 	end
 	
@@ -177,8 +176,8 @@ function module:GetText()
 		end
 	end
 	
-	if(module.session.QuestsToLevel > 0) then
-		if(self.db.global.ShowQuestsToLevel and module.session.QuestsToLevel > 0) then
+	if(self.db.global.ShowQuestsToLevel) then
+		if(module.session.QuestsToLevel > 0 and module.session.QuestsToLevel ~= math.huge) then
 			tinsert(outputText,
 				string.format("~%s |cff80e916quests|r", module.session.QuestsToLevel)
 			);
@@ -188,19 +187,20 @@ function module:GetText()
 	if(self.db.global.QuestXP.ShowText) then
 		local completeXP, incompleteXP, totalXP = module:CalculateQuestLogXP();
 		
-		local questXP = completeXP;
-		if(self.db.global.QuestXP.AddIncomplete) then
-			questXP = totalXP;
-		end
-		
 		local levelUpAlert = "";
-		if(current_xp + questXP >= max_xp) then
+		if(current_xp + completeXP >= max_xp) then
 			levelUpAlert = " (|cfff1e229enough to level|r)";
 		end
 		
-		tinsert(outputText,
-			string.format("%s |cff80e916xp from quests|r%s", BreakUpLargeNumbers(math.floor(questXP)), levelUpAlert)
-		);
+		if(not self.db.global.QuestXP.AddIncomplete) then
+			tinsert(outputText,
+				string.format("%s |cff80e916xp from completed quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), levelUpAlert)
+			);
+		elseif(self.db.global.QuestXP.AddIncomplete) then
+			tinsert(outputText,
+				string.format("%s |cffffdd00+|r %s |cff80e916xp from quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), BreakUpLargeNumbers(math.floor(incompleteXP)), levelUpAlert)
+			);
+		end
 	end
 	
 	return table.concat(outputText, "  ");
@@ -231,23 +231,43 @@ function module:GetChatMessage()
 	);
 end
 
+local datas = {
+	current = 30,
+	min = 0,
+	max = 100,
+	level = 1,
+}
+
+function extest(current, min, max, level)
+	datas = {
+		current = current or datas.current,
+		min = min or datas.min,
+		max = max or datas.max,
+		level = level or datas.level,
+	};
+	module:Refresh();
+end
+
+function module:GetBarDataz()
+	return datas;
+end
+
 function module:GetBarData()
 	local data    = {};
 	data.level    = UnitLevel("player");
 	data.min  	  = 0;
 	data.max  	  = UnitXPMax("player");
 	data.current  = UnitXP("player");
-	data.rested   = data.current + (GetXPExhaustion() or 0);
-	
-	local completeXP, incompleteXP, totalXP = module:CalculateQuestLogXP();
-	local questXP = completeXP;
-	
-	if(self.db.global.QuestXP.AddIncomplete) then
-		questXP = totalXP;
-	end
+	data.rested   = (GetXPExhaustion() or 0);
 	
 	if(self.db.global.QuestXP.ShowVisualizer) then
-		data.visual = data.current + questXP;
+		local completeXP, incompleteXP, totalXP = module:CalculateQuestLogXP();
+		
+		data.visual = completeXP;
+		
+		if(self.db.global.QuestXP.AddIncomplete) then
+			data.visual = { completeXP, totalXP };
+		end
 	end
 	
 	return data;
@@ -328,7 +348,7 @@ function module:GetOptionsMenu()
 			isNotRadio = true,
 		},
 		{
-			text = "Also add XP from incomplete quests",
+			text = "Also show XP from incomplete quests",
 			func = function() self.db.global.QuestXP.AddIncomplete = not self.db.global.QuestXP.AddIncomplete; module:Refresh(); end,
 			checked = function() return self.db.global.QuestXP.AddIncomplete; end,
 			isNotRadio = true,
@@ -383,6 +403,8 @@ function module:ResetSession()
 		TotalXP          = 0,
 		AverageQuestXP   = 0,
 	};
+	
+	module:RefreshText();
 end
 
 function module:IsPlayerMaxLevel(level)
