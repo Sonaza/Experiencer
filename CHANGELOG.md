@@ -1,3 +1,6 @@
+## 2.0.8
+* Fixed error when viewing artifact bar without an artifact weapon equipped.
+
 ## 2.0.7
 * Fixed chat message error with artifact weapons.
 * Fixed flashing bar with artifact weapon level up.

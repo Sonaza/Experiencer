@@ -36,6 +36,8 @@ function module:Update(elapsed)
 end
 
 function module:CanLevelUp()
+	if(not HasArtifactEquipped()) then return false end
+	
 	local _, _, _, _, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
 	local numPoints = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
 	return numPoints > 0;
@@ -129,11 +131,11 @@ function module:GetChatMessage()
 	));
 	
 	if(pointsSpent > 0) then
-		tinsert(outputText, ("at %s/%s power (%.1f%%) with %.1f%% to go"):format(
+		tinsert(outputText, ("at %s/%s power (%.1f%%) with %d to go"):format(
 			BreakUpLargeNumbers(artifactXP),	
 			BreakUpLargeNumbers(xpForNextPoint),
 			progress * 100,
-			(1-progress) * 100
+			remaining
 		));
 		
 		if(numPoints > 0) then
