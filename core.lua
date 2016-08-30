@@ -292,7 +292,7 @@ function Addon:StopAnimation()
 	end	
 end
 
-Addon.BufferModuleChanged = false;
+Addon.HasModuleChanged = false;
 
 function Addon:TriggerBufferedUpdate(instant)
 	local module = Addon:GetActiveModule();
@@ -305,7 +305,7 @@ function Addon:TriggerBufferedUpdate(instant)
 	local isLoss = false;
 	local changeCurrent = data.current;
 	
-	if(Addon.PreviousData and not Addon.BufferModuleChanged) then
+	if(Addon.PreviousData and not Addon.HasModuleChanged) then
 		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
 			isLoss = true;
 			changeCurrent = Addon.PreviousData.current;
@@ -331,7 +331,7 @@ function Addon:TriggerBufferedUpdate(instant)
 	
 	Addon:SetAnimationSpeed(1.0);
 	
-	if(valueHasChanged) then
+	if(valueHasChanged and not Addon.HasModuleChanged) then
 		if(Addon.PreviousData and not isLoss) then
 			local current = data.current;
 			local previous = Addon.PreviousData.current;
@@ -356,7 +356,7 @@ function Addon:TriggerBufferedUpdate(instant)
 		ExperiencerFrameBars.main:ProcessChangesInstantly();
 	end
 	
-	if(not instant and valueHasChanged) then
+	if(not instant and valueHasChanged and not Addon.HasModuleChanged) then
 		if(not isLoss) then
 			ExperiencerFrameBars.change.fadegain_in:Stop();
 			ExperiencerFrameBars.change.fadegain_out:Stop();
@@ -418,6 +418,11 @@ function Addon:UpdateBars(instant)
 	else
 		Addon.ChangeTarget = ExperiencerFrameBars.main:GetContinuousAnimatedValue();
 		ExperiencerFrameBars.change:SetValue(changeCurrent);
+	end
+	
+	if(Addon.HasModuleChanged) then
+		Addon.ChangeTarget = changeCurrent;
+		ExperiencerFrameBars.change:SetValue(Addon.ChangeTarget);
 	end
 	
 	if(data.rested and data.rested > 0) then
@@ -906,12 +911,18 @@ function Experiencer_OnUpdate(self, elapsed)
 	if(Addon.db.global.FlashLevelUp) then
 		local module = Addon:GetActiveModule();
 		if(module.levelUpRequiresAction) then
-			if(progress >= 1 and not ExperiencerFrameBars.highlight:IsVisible()) then
+			local canLevelUp = module:CanLevelUp();
+			ExperiencerFrameBars.highlight:SetMinMaxValues(minvalue, maxvalue);
+			ExperiencerFrameBars.highlight:SetValue(current);
+			
+			if(canLevelUp and not ExperiencerFrameBars.highlight:IsVisible()) then
 				ExperiencerFrameBars.highlight.fadein:Play();
-			elseif(progress < 1 and ExperiencerFrameBars.highlight:IsVisible()) then
+			elseif(not canLevelUp and ExperiencerFrameBars.highlight:IsVisible()) then
 				ExperiencerFrameBars.highlight.flash:Stop();
 				ExperiencerFrameBars.highlight.fadeout:Play();
 			end
+		else
+			ExperiencerFrameBars.highlight:Hide();
 		end
 	end
 end

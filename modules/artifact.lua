@@ -13,6 +13,8 @@ local module = Addon:RegisterModule("artifact", {
 		global = {
 			ShowArtifactName = true,
 			ShowRemaining = true,
+			ShowUnspentPoints = true,
+			ShowTotalArtifactPower = false,
 		},
 	},
 });
@@ -31,6 +33,12 @@ end
 
 function module:Update(elapsed)
 	
+end
+
+function module:CanLevelUp()
+	local _, _, _, _, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
+	local numPoints = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+	return numPoints > 0;
 end
 
 function module:HasCompletedArtifactIntro()
@@ -87,9 +95,15 @@ function module:GetText()
 		);
 	end
 	
-	if(artifactXP >= xpForNextPoint) then
+	if(self.db.global.ShowTotalArtifactPower) then
 		tinsert(outputText,
-			"|cff86ff3Ready to spend a point!|r"
+			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(totalXP))
+		);
+	end
+	
+	if(self.db.global.ShowUnspentPoints and numPoints > 0) then
+		tinsert(outputText,
+			("|cff86ff33%d unspent point%s|r"):format(numPoints, numPoints == 1 and "" or "s")
 		);
 	end
 	
@@ -97,24 +111,39 @@ function module:GetText()
 end
 
 function module:HasChatMessage()
-	return not HasArtifactEquipped(), "No artifact equipped.";
+	return HasArtifactEquipped(), "No artifact equipped.";
 end
 
 function module:GetChatMessage()
+	local outputText = {};
+	
 	local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
 	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
 	
 	local remaining = xpForNextPoint - artifactXP;
 	local progress  = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
 	
-	return ("%s is currently level %s at %s/%s power (%d%%) with %d%% to go."):format(
+	tinsert(outputText, ("%s is currently rank %s"):format(
 		name,
-		pointsSpent,
-		BreakUpLargeNumbers(artifactXP),	
-		BreakUpLargeNumbers(xpForNextPoint),
-		math.ceil(progress * 100),
-		math.ceil((1-progress) * 100)
-	);
+		pointsSpent
+	));
+	
+	if(pointsSpent > 0) then
+		tinsert(outputText, ("at %s/%s power (%.1f%%) with %.1f%% to go"):format(
+			BreakUpLargeNumbers(artifactXP),	
+			BreakUpLargeNumbers(xpForNextPoint),
+			progress * 100,
+			(1-progress) * 100
+		));
+		
+		if(numPoints > 0) then
+			tinsert(outputText,
+				("(%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
+			);
+		end
+	end
+	
+	return table.concat(outputText, " ");
 end
 
 function module:GetBarData()
@@ -162,6 +191,18 @@ function module:GetOptionsMenu()
 			text = "Show artifact name",
 			func = function() self.db.global.ShowArtifactName = not self.db.global.ShowArtifactName; module:RefreshText(); end,
 			checked = function() return self.db.global.ShowArtifactName; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show total artifact power",
+			func = function() self.db.global.ShowTotalArtifactPower = not self.db.global.ShowTotalArtifactPower; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowTotalArtifactPower; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show unspent points",
+			func = function() self.db.global.ShowUnspentPoints = not self.db.global.ShowUnspentPoints; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowUnspentPoints; end,
 			isNotRadio = true,
 		},
 	};

@@ -18,6 +18,8 @@ local module = Addon:RegisterModule("honor", {
 	},
 });
 
+module.levelUpRequiresAction = true;
+
 local HONOR_UNLOCK_LEVEL = 110;
 
 function module:Initialize()
@@ -31,11 +33,11 @@ function module:IsDisabled()
 end
 
 function module:Update(elapsed)
-	if(not CanPrestige()) then
-		module.levelUpRequiresAction = false;
-	else
-		module.levelUpRequiresAction = true;
-	end
+	
+end
+
+function module:CanLevelUp()
+	return CanPrestige();
 end
 
 function module:GetText()
