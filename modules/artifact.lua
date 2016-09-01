@@ -11,7 +11,6 @@ local module = Addon:RegisterModule("artifact", {
 	order       = 3,
 	savedvars   = {
 		global = {
-			ShowArtifactName = true,
 			ShowRemaining = true,
 			ShowUnspentPoints = true,
 			ShowTotalArtifactPower = false,
@@ -66,6 +65,21 @@ function module:HasCompletedArtifactIntro()
 	return false;
 end
 
+function module:CalculateTotalArtifactPower()
+	if(not HasArtifactEquipped()) then return 0 end
+	
+	local _, _, _, _, _, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
+	
+	local totalXP = 0;
+	
+	for i=0, pointsSpent-1 do
+		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(i, 0);
+		totalXP = totalXP + xpForNextPoint;
+	end
+	
+	return totalXP;
+end
+
 function module:GetText()
 	if(not HasArtifactEquipped()) then
 		return "No artifact equipped";
@@ -81,11 +95,9 @@ function module:GetText()
 	local progress          = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
 	local progressColor     = Addon:GetProgressColor(progress);
 	
-	if(self.db.global.ShowArtifactName) then
-		tinsert(outputText,
-			("|cffffecB3%s|r:"):format(name)
-		);
-	end
+	tinsert(outputText,
+		("|cffffecB3%s|r (Rank %d):"):format(name, pointsSpent)
+	);
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(outputText,
@@ -99,7 +111,7 @@ function module:GetText()
 	
 	if(self.db.global.ShowTotalArtifactPower) then
 		tinsert(outputText,
-			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(totalXP))
+			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(module:CalculateTotalArtifactPower()))
 		);
 	end
 	
@@ -188,12 +200,6 @@ function module:GetOptionsMenu()
 		},
 		{
 			text = " ", isTitle = true, notCheckable = true,
-		},
-		{
-			text = "Show artifact name",
-			func = function() self.db.global.ShowArtifactName = not self.db.global.ShowArtifactName; module:RefreshText(); end,
-			checked = function() return self.db.global.ShowArtifactName; end,
-			isNotRadio = true,
 		},
 		{
 			text = "Show total artifact power",
