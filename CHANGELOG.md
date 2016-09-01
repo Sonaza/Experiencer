@@ -1,3 +1,6 @@
+## 2.0.9
+* Improvements to artifact bar text.
+
 ## 2.0.8
 * Fixed error when viewing artifact bar without an artifact weapon equipped.
 
