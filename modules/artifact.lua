@@ -15,6 +15,7 @@ local module = Addon:RegisterModule("artifact", {
 			ShowUnspentPoints = true,
 			ShowTotalArtifactPower = false,
 			ShowBagArtifactPower = true,
+			UnspentInChatMessage = false,
 		},
 	},
 });
@@ -161,6 +162,12 @@ function module:GetChatMessage()
 		));
 	end
 	
+	if(self.db.global.UnspentInChatMessage and numPoints > 0) then
+		tinsert(outputText,
+			(" (%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
+		);
+	end
+	
 	return table.concat(outputText, " ");
 end
 
@@ -221,6 +228,12 @@ function module:GetOptionsMenu()
 			text = "Show sum of artifact power in bags",
 			func = function() self.db.global.ShowBagArtifactPower = not self.db.global.ShowBagArtifactPower; module:RefreshText(); end,
 			checked = function() return self.db.global.ShowBagArtifactPower; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Include unspent points in chat message",
+			func = function() self.db.global.UnspentInChatMessage = not self.db.global.UnspentInChatMessage; module:RefreshText(); end,
+			checked = function() return self.db.global.UnspentInChatMessage; end,
 			isNotRadio = true,
 		},
 	};
