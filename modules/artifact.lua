@@ -256,32 +256,34 @@ function module:UNIT_INVENTORY_CHANGED(event, unit)
 	end
 end
 
-local APScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
+local EMPOWERING_SPELL_ID = 227907;
+
+local ExperiencerAPScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
 function module:FindPowerItemsInInventory()
 	local powers = {};
-	
 	local totalPower = 0;
+	
+	local spellName = GetSpellInfo(EMPOWERING_SPELL_ID);
 	
 	for container = 0, NUM_BAG_SLOTS do
 		local numSlots = GetContainerNumSlots(container);
 		
 		for slot = 1, numSlots do
 			local link = GetContainerItemLink(container, slot);
-			if(link and GetItemSpell(link)) then
-				APScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
-				APScannerTooltip:SetHyperlink(link);
+			if(link and GetItemSpell(link) == spellName) then
+				ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
+				ExperiencerAPScannerTooltip:SetHyperlink(link);
 				
-				if(ExperiencerAPScannerTooltipTextLeft2) then
-					if(strfind(ExperiencerAPScannerTooltipTextLeft2:GetText(), ARTIFACT_POWER) ~= nil) then
-						local power = module:GetItemArtifactPower(link);
-						if(power) then
-							totalPower = totalPower + power;
-							tinsert(powers, {
-								link = link,
-								power = power,
-							});
-						end
-					end
+				local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
+				if(not tooltipText) then return nil end
+
+				local power = tonumber(tooltipText:gsub("[,%.]", ""):match("%d.-%s"));
+				if(power) then
+					totalPower = totalPower + power;
+					tinsert(powers, {
+						link = link,
+						power = power,
+					});
 				end
 			end
 		end
@@ -293,8 +295,8 @@ end
 function module:GetItemArtifactPower(link)
 	if(not link) then return nil end
 	
-	APScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
-	APScannerTooltip:SetHyperlink(link);
+	ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
+	ExperiencerAPScannerTooltip:SetHyperlink(link);
 	
 	local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
 	if(not tooltipText) then return nil end
