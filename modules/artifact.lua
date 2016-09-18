@@ -14,8 +14,9 @@ local module = Addon:RegisterModule("artifact", {
 			ShowRemaining = true,
 			ShowUnspentPoints = true,
 			ShowTotalArtifactPower = false,
-			ShowBagArtifactPower = true,
 			UnspentInChatMessage = false,
+			ShowBagArtifactPower = true,
+			VisualizeBagArtifactPower = true,
 		},
 	},
 });
@@ -187,6 +188,11 @@ function module:GetBarData()
 		data.level    = pointsSpent + numPoints or 0;
 		data.max  	  = xpForNextPoint;
 		data.current  = artifactXP;
+		
+		if(self.db.global.VisualizeBagArtifactPower) then
+			local totalPower = module:FindPowerItemsInInventory();
+			data.visual = totalPower;
+		end
 	end
 	
 	return data;
@@ -225,15 +231,21 @@ function module:GetOptionsMenu()
 			isNotRadio = true,
 		},
 		{
-			text = "Show sum of artifact power in bags",
+			text = "Include unspent points in chat message",
+			func = function() self.db.global.UnspentInChatMessage = not self.db.global.UnspentInChatMessage; module:RefreshText(); end,
+			checked = function() return self.db.global.UnspentInChatMessage; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show unspent artifact power in bags",
 			func = function() self.db.global.ShowBagArtifactPower = not self.db.global.ShowBagArtifactPower; module:RefreshText(); end,
 			checked = function() return self.db.global.ShowBagArtifactPower; end,
 			isNotRadio = true,
 		},
 		{
-			text = "Include unspent points in chat message",
-			func = function() self.db.global.UnspentInChatMessage = not self.db.global.UnspentInChatMessage; module:RefreshText(); end,
-			checked = function() return self.db.global.UnspentInChatMessage; end,
+			text = "Visualize unspent artifact power in bags",
+			func = function() self.db.global.VisualizeBagArtifactPower = not self.db.global.VisualizeBagArtifactPower; module:RefreshText(); end,
+			checked = function() return self.db.global.VisualizeBagArtifactPower; end,
 			isNotRadio = true,
 		},
 	};
