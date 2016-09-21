@@ -301,84 +301,83 @@ function module:GetReputationsMenu()
 	local depth = 0;
 	
 	local numFactions = GetNumFactions();
-	local index = 1;
-	while index <= numFactions do
+	for index = 1, numFactions do
 		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(index);
-		local friend_level = select(7, GetFriendshipReputation(factionID));
-		local standing_text = "";
-		local faction_index = index;
-		
-		if(not isHeader or hasRep) then
-			if(friend_level) then
-				standing_text = friend_level;
-			else
-				standing_text = module:GetStandingColorText(standing)
-			end
-		end
-		
-		if(isHeader and isCollapsed) then
-			ExpandFactionHeader(index);
-			numFactions = GetNumFactions();
-		end
-		
-		if(isHeader and isChild) then -- Second tier header
-			if(depth == 2) then
-				current = previous;
-				previous = nil;
+		if(name) then
+			local friend_level = select(7, GetFriendshipReputation(factionID));
+			local standing_text = "";
+			local faction_index = index;
+			
+			if(not isHeader or hasRep) then
+				if(friend_level) then
+					standing_text = friend_level;
+				else
+					standing_text = module:GetStandingColorText(standing)
+				end
 			end
 			
-			if(not hasRep) then
+			if(isHeader and isCollapsed) then
+				ExpandFactionHeader(index);
+				numFactions = GetNumFactions();
+			end
+			
+			if(isHeader and isChild) then -- Second tier header
+				if(depth == 2) then
+					current = previous;
+					previous = nil;
+				end
+				
+				if(not hasRep) then
+					tinsert(current, {
+						text = name,
+						hasArrow = true,
+						notCheckable = true,
+						menuList = {},
+					})
+				else
+					tinsert(current, {
+						text = string.format("%s (%s)", name, standing_text),
+						hasArrow = true,
+						func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+						checked = function() return isWatched; end,
+						menuList = {},
+					})
+				end
+				
+				previous = current;
+				current = current[#current].menuList;
 				tinsert(current, {
+					text = name,
+					isTitle = true,
+					notCheckable = true,
+				})
+				
+				depth = 2
+				
+			elseif(isHeader) then -- First tier header
+				tinsert(factions, {
 					text = name,
 					hasArrow = true,
 					notCheckable = true,
 					menuList = {},
 				})
-			else
+				
+				current = factions[#factions].menuList;
+				tinsert(current, {
+					text = name,
+					isTitle = true,
+					notCheckable = true,
+				})
+				
+				depth = 1
+			elseif(not isHeader) then -- First and second tier faction
 				tinsert(current, {
 					text = string.format("%s (%s)", name, standing_text),
-					hasArrow = true,
 					func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
-					checked = function() return isWatched; end,
-					menuList = {},
+					checked = function() return isWatched end,
 				})
 			end
-			
-			previous = current;
-			current = current[#current].menuList;
-			tinsert(current, {
-				text = name,
-				isTitle = true,
-				notCheckable = true,
-			})
-			
-			depth = 2
-			
-		elseif(isHeader) then -- First tier header
-			tinsert(factions, {
-				text = name,
-				hasArrow = true,
-				notCheckable = true,
-				menuList = {},
-			})
-			
-			current = factions[#factions].menuList;
-			tinsert(current, {
-				text = name,
-				isTitle = true,
-				notCheckable = true,
-			})
-			
-			depth = 1
-		elseif(not isHeader) then -- First and second tier faction
-			tinsert(current, {
-				text = string.format("%s (%s)", name, standing_text),
-				func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
-				checked = function() return isWatched end,
-			})
 		end
-		
-		index = index + 1;
 	end
 	
 	local recent = module:GetRecentReputationsMenu();

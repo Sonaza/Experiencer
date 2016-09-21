@@ -1,3 +1,11 @@
+## 2.0.10
+* Attempted fix for options menu not working for some people due to some error with reputations.
+* Added display of currently unspent artifact power tokens in player inventory.
+* Total artifact power text now displays the spent and currently accumulated power instead of spent only.
+* Fixed artifact power level up animation.
+* Number of unspent trait points available for an artifact is now calculated in the total rank number.
+* Honor chat message now tells remaining honor instead of percentage.
+
 ## 2.0.9
 * Improvements to artifact bar text.
 

@@ -111,18 +111,18 @@ function module:GetChatMessage()
 	
 	local progress          = honor / (honormax > 0 and honormax or 1);
 	
-	local leveltext = ("Currently honor level %d"):format(level);
+	local leveltext = ("Currently honor rank %d"):format(level);
 	
 	if(prestige > 0) then
 		leveltext = ("%s (%d prestige)"):format(leveltext, prestige);
 	end
 	
-	return ("%s at %s/%s (%d%%) with %d%% to go."):format(
+	return ("%s at %s/%s (%d%%) with %s to go"):format(
 		leveltext,
 		BreakUpLargeNumbers(honor),	
 		BreakUpLargeNumbers(honormax),
 		math.ceil(progress * 100),
-		math.ceil((1-progress) * 100)
+		BreakUpLargeNumbers(remaining)
 	);
 end
 

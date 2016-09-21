@@ -14,6 +14,9 @@ local module = Addon:RegisterModule("artifact", {
 			ShowRemaining = true,
 			ShowUnspentPoints = true,
 			ShowTotalArtifactPower = false,
+			UnspentInChatMessage = false,
+			ShowBagArtifactPower = true,
+			VisualizeBagArtifactPower = true,
 		},
 	},
 });
@@ -68,7 +71,7 @@ end
 function module:CalculateTotalArtifactPower()
 	if(not HasArtifactEquipped()) then return 0 end
 	
-	local _, _, _, _, _, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
+	local _, _, _, _, currentXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
 	
 	local totalXP = 0;
 	
@@ -77,7 +80,7 @@ function module:CalculateTotalArtifactPower()
 		totalXP = totalXP + xpForNextPoint;
 	end
 	
-	return totalXP;
+	return totalXP + currentXP;
 end
 
 function module:GetText()
@@ -96,7 +99,7 @@ function module:GetText()
 	local progressColor     = Addon:GetProgressColor(progress);
 	
 	tinsert(outputText,
-		("|cffffecB3%s|r (Rank %d):"):format(name, pointsSpent)
+		("|cffffecB3%s|r (Rank %d):"):format(name, pointsSpent + numPoints)
 	);
 	
 	if(self.db.global.ShowRemaining) then
@@ -113,6 +116,15 @@ function module:GetText()
 		tinsert(outputText,
 			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(module:CalculateTotalArtifactPower()))
 		);
+	end
+	
+	if(self.db.global.ShowBagArtifactPower) then
+		local totalPower = module:FindPowerItemsInInventory();
+		if(totalPower > 0) then
+			tinsert(outputText,
+				("%s |cffa8ff00artifact power in bags|r"):format(BreakUpLargeNumbers(totalPower))
+			);
+		end
 	end
 	
 	if(self.db.global.ShowUnspentPoints and numPoints > 0) then
@@ -139,7 +151,7 @@ function module:GetChatMessage()
 	
 	tinsert(outputText, ("%s is currently rank %s"):format(
 		name,
-		pointsSpent
+		pointsSpent + numPoints
 	));
 	
 	if(pointsSpent > 0) then
@@ -149,12 +161,12 @@ function module:GetChatMessage()
 			progress * 100,
 			remaining
 		));
-		
-		if(numPoints > 0) then
-			tinsert(outputText,
-				("(%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
-			);
-		end
+	end
+	
+	if(self.db.global.UnspentInChatMessage and numPoints > 0) then
+		tinsert(outputText,
+			(" (%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
+		);
 	end
 	
 	return table.concat(outputText, " ");
@@ -173,9 +185,14 @@ function module:GetBarData()
 		local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
 		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
 		
-		data.level    = pointsSpent;
+		data.level    = pointsSpent + numPoints or 0;
 		data.max  	  = xpForNextPoint;
 		data.current  = artifactXP;
+		
+		if(self.db.global.VisualizeBagArtifactPower) then
+			local totalPower = module:FindPowerItemsInInventory();
+			data.visual = totalPower;
+		end
 	end
 	
 	return data;
@@ -213,6 +230,24 @@ function module:GetOptionsMenu()
 			checked = function() return self.db.global.ShowUnspentPoints; end,
 			isNotRadio = true,
 		},
+		{
+			text = "Include unspent points in chat message",
+			func = function() self.db.global.UnspentInChatMessage = not self.db.global.UnspentInChatMessage; module:RefreshText(); end,
+			checked = function() return self.db.global.UnspentInChatMessage; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Show unspent artifact power in bags",
+			func = function() self.db.global.ShowBagArtifactPower = not self.db.global.ShowBagArtifactPower; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowBagArtifactPower; end,
+			isNotRadio = true,
+		},
+		{
+			text = "Visualize unspent artifact power in bags",
+			func = function() self.db.global.VisualizeBagArtifactPower = not self.db.global.VisualizeBagArtifactPower; module:RefreshText(); end,
+			checked = function() return self.db.global.VisualizeBagArtifactPower; end,
+			isNotRadio = true,
+		},
 	};
 	
 	return menudata;
@@ -231,4 +266,57 @@ function module:UNIT_INVENTORY_CHANGED(event, unit)
 	else
 		module:Refresh(true);
 	end
+end
+
+local EMPOWERING_SPELL_ID = 227907;
+
+local ExperiencerAPScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
+function module:FindPowerItemsInInventory()
+	local powers = {};
+	local totalPower = 0;
+	
+	local spellName = GetSpellInfo(EMPOWERING_SPELL_ID);
+	
+	for container = 0, NUM_BAG_SLOTS do
+		local numSlots = GetContainerNumSlots(container);
+		
+		for slot = 1, numSlots do
+			local link = GetContainerItemLink(container, slot);
+			if(link and GetItemSpell(link) == spellName) then
+				ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
+				ExperiencerAPScannerTooltip:SetHyperlink(link);
+				
+				local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
+				if(not tooltipText) then return nil end
+
+				local power = tonumber(tooltipText:gsub("[,%.]", ""):match("%d.-%s"));
+				if(power) then
+					totalPower = totalPower + power;
+					tinsert(powers, {
+						link = link,
+						power = power,
+					});
+				end
+			end
+		end
+	end
+	
+	return totalPower, powers;
+end
+
+function module:GetItemArtifactPower(link)
+	if(not link) then return nil end
+	
+	ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
+	ExperiencerAPScannerTooltip:SetHyperlink(link);
+	
+	local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
+	if(not tooltipText) then return nil end
+	
+	local power = tooltipText:gsub("[,%.]", ""):match("%d.-%s");
+	if(power) then
+		return tonumber(power);
+	end
+	
+	return nil;
 end
