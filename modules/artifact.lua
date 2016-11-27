@@ -120,7 +120,7 @@ function module:GetText()
 	
 	if(self.db.global.ShowBagArtifactPower) then
 		local totalPower = module:FindPowerItemsInInventory();
-		if(totalPower > 0) then
+		if(totalPower and totalPower > 0) then
 			tinsert(outputText,
 				("%s |cffa8ff00artifact power in bags|r"):format(BreakUpLargeNumbers(totalPower))
 			);
@@ -287,15 +287,15 @@ function module:FindPowerItemsInInventory()
 				ExperiencerAPScannerTooltip:SetHyperlink(link);
 				
 				local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
-				if(not tooltipText) then return nil end
-
-				local power = tonumber(tooltipText:gsub("[,%.]", ""):match("%d.-%s"));
-				if(power) then
-					totalPower = totalPower + power;
-					tinsert(powers, {
-						link = link,
-						power = power,
-					});
+				if(tooltipText) then
+					local power = tonumber(tooltipText:gsub("[,%.]", ""):match("%d.-%s"));
+					if(power) then
+						totalPower = totalPower + power;
+						tinsert(powers, {
+							link = link,
+							power = power,
+						});
+					end
 				end
 			end
 		end
