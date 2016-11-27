@@ -1,5 +1,8 @@
+## 2.0.11
+* Fixed nil error with artifact power inventory scanner.
+
 ## 2.0.10
-* Attempted fix for options menu not working for some people due to some error with reputations.
+* Fixed options menu not working if player had discovered Conjurer Margoss reputation.
 * Added display of currently unspent artifact power tokens in player inventory.
 * Total artifact power text now displays the spent and currently accumulated power instead of spent only.
 * Fixed artifact power level up animation.
