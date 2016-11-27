@@ -1,5 +1,6 @@
 ## 2.0.11
 * Fixed nil error with artifact power inventory scanner.
+* TOC bump for patch 7.1.0.
 
 ## 2.0.10
 * Fixed options menu not working if player had discovered Conjurer Margoss reputation.
