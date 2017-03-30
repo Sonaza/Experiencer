@@ -40,8 +40,8 @@ end
 function module:CanLevelUp()
 	if(not HasArtifactEquipped()) then return false end
 	
-	local _, _, _, _, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+	local _, _, _, _, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
+	local numPoints, xp, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
 	return numPoints > 0;
 end
 
@@ -90,8 +90,8 @@ function module:GetText()
 	
 	local outputText = {};
 	
-	local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+	local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
+	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
 	
 	local remaining         = xpForNextPoint - artifactXP;
 	
@@ -143,8 +143,8 @@ end
 function module:GetChatMessage()
 	local outputText = {};
 	
-	local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+	local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
+	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
 	
 	local remaining = xpForNextPoint - artifactXP;
 	local progress  = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
@@ -182,8 +182,8 @@ function module:GetBarData()
 	data.visual   = nil;
 	
 	if(HasArtifactEquipped()) then
-		local itemID, altItemID, name, icon, totalXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
-		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP);
+		local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
+		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
 		
 		data.level    = pointsSpent + numPoints or 0;
 		data.max  	  = xpForNextPoint;
