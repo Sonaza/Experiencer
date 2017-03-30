@@ -1,3 +1,7 @@
+## 2.1.0
+* Merged artifact bar fix submitted by Superfat72. Thanks!
+* TOC bump for patch 7.2.0.
+
 ## 2.0.11
 * Fixed nil error with artifact power inventory scanner.
 * TOC bump for patch 7.1.0.
