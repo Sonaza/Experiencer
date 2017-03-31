@@ -1,3 +1,6 @@
+## 2.1.1
+* Fixed one more bug introduced by the recent patch.
+
 ## 2.1.0
 * Merged artifact bar fix submitted by Superfat72. Thanks!
 * TOC bump for patch 7.2.0.
