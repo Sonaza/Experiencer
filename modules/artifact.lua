@@ -71,12 +71,12 @@ end
 function module:CalculateTotalArtifactPower()
 	if(not HasArtifactEquipped()) then return 0 end
 	
-	local _, _, _, _, currentXP, pointsSpent = C_ArtifactUI.GetEquippedArtifactInfo();
+	local _, _, _, _, currentXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
 	
 	local totalXP = 0;
 	
 	for i=0, pointsSpent-1 do
-		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(i, 0);
+		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(i, 0, artifactTier);
 		totalXP = totalXP + xpForNextPoint;
 	end
 	
