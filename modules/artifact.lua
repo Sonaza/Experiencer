@@ -271,6 +271,30 @@ end
 local EMPOWERING_SPELL_ID = 227907;
 
 local ExperiencerAPScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
+
+local APStringValueMillion = {
+	["enUS"] = "(%d*[%p%s]?%d+) million",
+	["enGB"] = "(%d*[%p%s]?%d+) million",
+	["ptBR"] = "(%d*[%p%s]?%d+) [[milhão][milhões]]?",
+	["esMX"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["deDE"] = "(%d*[%p%s]?%d+) [[Million][Millionen]]?",
+	["esES"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["frFR"] = "(%d*[%p%s]?%d+) [[million][millions]]?",
+	["itIT"] = "(%d*[%p%s]?%d+) [[milione][milioni]]?",
+	["ruRU"] = "(%d*[%p%s]?%d+) млн",
+	["koKR"] = "(%d*[%p%s]?%d+)만",
+	["zhTW"] = "(%d*[%p%s]?%d+)萬",
+	["zhCN"] = "(%d*[%p%s]?%d+) 万",
+};
+local APValueMultiplier = {
+	["koKR"] = 1e4,
+	["zhTW"] = 1e4,
+	["zhCN"] = 1e4,
+};
+
+local APStringValueMillionLocal = APStringValueMillion[GetLocale()];
+local APValueMultiplierLocal = (APValueMultiplier[GetLocale()] or 1e6);
+
 function module:FindPowerItemsInInventory()
 	local powers = {};
 	local totalPower = 0;
@@ -282,20 +306,14 @@ function module:FindPowerItemsInInventory()
 		
 		for slot = 1, numSlots do
 			local link = GetContainerItemLink(container, slot);
-			if(link and GetItemSpell(link) == spellName) then
-				ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
-				ExperiencerAPScannerTooltip:SetHyperlink(link);
-				
-				local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
-				if(tooltipText) then
-					local power = tonumber(tooltipText:gsub("[,%.]", ""):match("%d.-%s"));
-					if(power) then
-						totalPower = totalPower + power;
-						tinsert(powers, {
-							link = link,
-							power = power,
-						});
-					end
+			if(link) then --and GetItemSpell(link) == spellName) then
+				local power = module:GetItemArtifactPower(link);
+				if(power) then
+					totalPower = totalPower + power;
+					tinsert(powers, {
+						link = link,
+						power = power,
+					});
 				end
 			end
 		end
@@ -313,9 +331,23 @@ function module:GetItemArtifactPower(link)
 	local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
 	if(not tooltipText) then return nil end
 	
-	local power = tooltipText:gsub("[,%.]", ""):match("%d.-%s");
+	local digit1, digit2, digit3, power;
+	local value = strmatch(tooltipText, APStringValueMillionLocal);
+
+	if (value) then
+		digit1, digit2 = strmatch(value, "(%d+)[%p%s](%d+)");
+		if (digit1 and digit2) then
+			power = tonumber(format("%s.%s", digit1, digit2)) * APValueMultiplierLocal; 
+		else
+			power = tonumber(value) * APValueMultiplierLocal; 
+		end 
+	else
+		digit1, digit2, digit3 = strmatch(tooltipText,"(%d+)[%p%s]?(%d+)[%p%s]?(%d*)");
+		power = tonumber(format("%s%s%s", digit1 or "", digit2 or "", (digit2 and digit3) and digit3 or ""));
+	end
+
 	if(power) then
-		return tonumber(power);
+		return power;
 	end
 	
 	return nil;

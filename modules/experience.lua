@@ -86,13 +86,10 @@ local QUEST_EXPERIENCE_PATTERN = "^" .. string.gsub(ERR_QUEST_REWARD_EXP_I, "%%d
 
 function module:Initialize()
 	self:RegisterEvent("CHAT_MSG_SYSTEM");
-
 	self:RegisterEvent("PLAYER_XP_UPDATE");
 	self:RegisterEvent("PLAYER_LEVEL_UP");
-	
-	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	self:RegisterEvent("QUEST_LOG_UPDATE");
-	
+	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	self:RegisterEvent("UPDATE_EXPANSION_LEVEL");
 	
 	module.playerCanLevel = not module:IsPlayerMaxLevel();
@@ -229,27 +226,6 @@ function module:GetChatMessage()
 		remaining_xp_text, 
 		rested_xp_percent
 	);
-end
-
-local datas = {
-	current = 30,
-	min = 0,
-	max = 100,
-	level = 1,
-}
-
-function extest(current, min, max, level)
-	datas = {
-		current = current or datas.current,
-		min = min or datas.min,
-		max = max or datas.max,
-		level = level or datas.level,
-	};
-	module:Refresh();
-end
-
-function module:GetBarDataz()
-	return datas;
 end
 
 function module:GetBarData()
@@ -556,6 +532,7 @@ function module:UPDATE_EXPANSION_LEVEL()
 end
 
 function module:QUEST_LOG_UPDATE()
+	module:Refresh(true);
 	Addon:UpdateText();
 end
 
