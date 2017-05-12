@@ -306,7 +306,7 @@ function module:FindPowerItemsInInventory()
 		
 		for slot = 1, numSlots do
 			local link = GetContainerItemLink(container, slot);
-			if(link) then --and GetItemSpell(link) == spellName) then
+			if(link and GetItemSpell(link) == spellName) then
 				local power = module:GetItemArtifactPower(link);
 				if(power) then
 					totalPower = totalPower + power;
