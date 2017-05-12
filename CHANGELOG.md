@@ -1,3 +1,6 @@
+## 2.1.3
+* Fixed debug related bug left in the previous version.
+
 ## 2.1.2
 * Fixed AP counter not calculating millions properly.
 * Fixed quest XP visualization bar not updating when picking up or abandoning quests.
