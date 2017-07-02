@@ -1,3 +1,8 @@
+## 2.2.0
+* Added new keybind for artifact bar: Shift + Middle Mouse will now open artifact talent window while artifact module is active.
+* Reputation module now supports paragon reputations.
+* Fixed weird bar animations.
+
 ## 2.1.3
 * Fixed debug related bug left in the previous version.
 

@@ -140,6 +140,7 @@ function module:GetBarData()
 	local progressColor     = Addon:GetProgressColor(progress);
 	
 	local data    = {};
+	data.id       = nil;
 	data.level    = level;
 	
 	if(level ~= levelmax) then

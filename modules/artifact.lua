@@ -22,6 +22,7 @@ local module = Addon:RegisterModule("artifact", {
 });
 
 module.levelUpRequiresAction = true;
+module.hasCustomMouseCallback = true;
 
 function module:Initialize()
 	self:RegisterEvent("ARTIFACT_XP_UPDATE");
@@ -35,6 +36,15 @@ end
 
 function module:Update(elapsed)
 	
+end
+
+function module:OnMouseDown(button)
+	if(button == "MiddleButton" and IsShiftKeyDown()) then
+		if(HasArtifactEquipped()) then
+			SocketInventoryItem(INVSLOT_MAINHAND);
+			return true;
+		end
+	end
 end
 
 function module:CanLevelUp()
@@ -174,6 +184,7 @@ end
 
 function module:GetBarData()
 	local data    = {};
+	data.id       = nil;
 	data.level    = 0;
 	data.min  	  = 0;
 	data.max  	  = 1;
@@ -185,6 +196,8 @@ function module:GetBarData()
 		local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
 		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
 		
+		data.id       = itemID;
+	
 		data.level    = pointsSpent + numPoints or 0;
 		data.max  	  = xpForNextPoint;
 		data.current  = artifactXP;

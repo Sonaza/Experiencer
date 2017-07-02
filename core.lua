@@ -383,7 +383,9 @@ function Addon:UpdateBars(instant)
 	local isLoss = false;
 	local changeCurrent = data.current;
 	
-	if(Addon.PreviousData and not Addon.HasModuleChanged) then
+	Addon.HasDataIdChanged = Addon.PreviousData and Addon.PreviousData.id ~= data.id;
+	
+	if(Addon.PreviousData and not Addon.HasModuleChanged and not Addon.HasDataIdChanged) then
 		if(data.level == Addon.PreviousData.level and data.current < Addon.PreviousData.current) then
 			isLoss = true;
 			changeCurrent = Addon.PreviousData.current;
@@ -420,7 +422,7 @@ function Addon:UpdateBars(instant)
 		ExperiencerFrameBars.change:SetValue(changeCurrent);
 	end
 	
-	if(Addon.HasModuleChanged) then
+	if(instant or Addon.HasModuleChanged or Addon.HasDataIdChanged) then
 		Addon.ChangeTarget = changeCurrent;
 		ExperiencerFrameBars.change:SetValue(Addon.ChangeTarget);
 	end
@@ -540,6 +542,12 @@ end
 
 function Experiencer_OnMouseDown(self, button)
 	CloseMenus();
+	
+	local activeModule = Addon:GetActiveModule();
+	if(activeModule and activeModule.hasCustomMouseCallback) then
+		local hadAction = activeModule:OnMouseDown(button);
+		if(hadAction) then return end
+	end
 	
 	if(button == "LeftButton") then
 		if(IsShiftKeyDown()) then

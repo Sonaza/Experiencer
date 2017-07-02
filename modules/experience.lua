@@ -230,6 +230,7 @@ end
 
 function module:GetBarData()
 	local data    = {};
+	data.id       = nil;
 	data.level    = UnitLevel("player");
 	data.min  	  = 0;
 	data.max  	  = UnitXPMax("player");

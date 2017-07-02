@@ -50,7 +50,16 @@ function module:IsDisabled()
 end
 
 function module:Update(elapsed)
-	
+	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+end
+
+function module:CanLevelUp()
+	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+	if(name and C_Reputation.IsFactionParagon(factionID)) then
+		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+		return hasRewardPending;
+	end
+	return false;
 end
 
 function module:GetText()
@@ -63,30 +72,51 @@ function module:GetText()
 	local rep_text = {};
 	
 	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
-	local remainingReputation = maxReputation - currentReputation;
-	
-	local realCurrentReputation = currentReputation - minReputation;
-	local realMaxReputation = maxReputation - minReputation;
-	
-	local progress = realCurrentReputation / realMaxReputation;
-	local color = Addon:GetProgressColor(progress);
+	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
 	
 	local standingText = "";
-	local friendLevel = select(7, GetFriendshipReputation(factionID));
+	local isCapped = false;
 	
-	if(not friendLevel) then
-		standingText = module:GetStandingColorText(standing);
-	else
+	if(friendLevel) then
 		standingText = friendLevel;
+		if(not nextFriendThreshold) then
+			isCapped = true;
+		end
+	else
+		standingText = module:GetStandingColorText(standing);
+		if(standing == MAX_REPUTATION_REACTION) then
+			isCapped = true;
+		end
 	end
 	
-	if(self.db.global.ShowRemaining) then
-		tinsert(outputText,
-			string.format("%s (%s): %s%s|r (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
-		);
+	if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
+		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+		isCapped = false;
+		minReputation = 0;
+		currentReputation = currentValue;
+		maxReputation = threshold;
+	end
+	
+	if(not isCapped) then
+		local remainingReputation = maxReputation - currentReputation;
+		local realCurrentReputation = currentReputation - minReputation;
+		local realMaxReputation = maxReputation - minReputation;
+		
+		local progress = realCurrentReputation / realMaxReputation;
+		local color = Addon:GetProgressColor(progress);
+		
+		if(self.db.global.ShowRemaining) then
+			tinsert(outputText,
+				string.format("%s (%s): %s%s|r (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
+			);
+		else
+			tinsert(outputText,
+				string.format("%s (%s): %s%s|r / %s (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, progress * 100)
+			);
+		end
 	else
 		tinsert(outputText,
-			string.format("%s (%s): %s%s|r / %s (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, progress * 100)
+			string.format("%s (%s)", name, standingText)
 		);
 	end
 	
@@ -104,32 +134,56 @@ function module:HasChatMessage()
 end
 
 function module:GetChatMessage()
-	local name, standing, min_rep, max_rep, rep_value, factionID = GetWatchedFactionInfo();
+	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
 	
-	local remaining_rep = max_rep - rep_value;
-	local progress = (rep_value - min_rep) / (max_rep - min_rep)
+	local standingText = "";
+	local isCapped = false;
 	
-	local standing_text = "";
-	local friend_text = select(7, GetFriendshipReputation(factionID));
-	
-	if(not friend_text) then
-		standing_text = _G['FACTION_STANDING_LABEL' .. standing];
+	if(friendLevel) then
+		standingText = friendLevel;
+		if(not nextFriendThreshold) then
+			isCapped = true;
+		end
 	else
-		standing_text = select(7, GetFriendshipReputation(factionID));
+		standingText = GetText("FACTION_STANDING_LABEL" .. standing, UnitSex("player"));
+		if(standing == MAX_REPUTATION_REACTION) then
+			isCapped = true;
+		end
 	end
 	
-	return string.format("%s with %s: %s/%s (%d%%) with %s to go",
-		standing_text,
-		name,
-		BreakUpLargeNumbers(rep_value - min_rep),
-		BreakUpLargeNumbers(max_rep - min_rep),
-		progress * 100,
-		BreakUpLargeNumbers(remaining_rep)
-	);
+	
+	if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
+		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+		isCapped = false;
+		minReputation = 0;
+		currentReputation = currentValue;
+		maxReputation = threshold;
+	end
+	
+	if(not isCapped) then
+		local remaining_rep = maxReputation - currentReputation;
+		local progress = (currentReputation - minReputation) / (maxReputation - minReputation);
+		
+		return string.format("%s with %s: %s/%s (%d%%) with %s to go",
+			standingText,
+			name,
+			BreakUpLargeNumbers(currentReputation - minReputation),
+			BreakUpLargeNumbers(maxReputation - minReputation),
+			progress * 100,
+			BreakUpLargeNumbers(remaining_rep)
+		);
+	else
+		return string.format("%s with %s",
+			standingText,
+			name
+		);
+	end
 end
 
 function module:GetBarData()
 	local data    = {};
+	data.id       = nil;
 	data.level    = 0;
 	data.min  	  = 0;
 	data.max  	  = 1;
@@ -139,11 +193,38 @@ function module:GetBarData()
 	
 	if(module:HasWatchedReputation()) then
 		local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+		data.id = factionID;
+		
+		local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+		
+		local standingText = "";
+		local isCapped = false;
+		
+		if(friendLevel and not nextFriendThreshold) then
+			isCapped = true;
+		elseif(standing == MAX_REPUTATION_REACTION) then
+			isCapped = true;
+		end
+		
+		if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
+			local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+			isCapped = false;
+			minReputation = 0;
+			currentReputation = currentValue;
+			maxReputation = threshold;
+		end
 		
 		data.level    = standing;
-		data.min  	  = minReputation;
-		data.max  	  = maxReputation;
-		data.current  = currentReputation;
+		
+		if(not isCapped) then
+			data.min  	 = minReputation;
+			data.max  	 = maxReputation;
+			data.current = currentReputation;
+		else
+			data.min     = 0;
+			data.max     = 1;
+			data.current = 1;
+		end
 	end
 	
 	return data;
@@ -406,7 +487,12 @@ function module:GetStandingColorText(standing)
 		[8] = {r=0.00, g=1.00, b=1.00}, -- exalted
 	}
 	
-	return string.format('|cff%02x%02x%02x%s|r', colors[standing].r * 255, colors[standing].g * 255, colors[standing].b * 255, _G['FACTION_STANDING_LABEL' .. standing]);
+	return string.format('|cff%02x%02x%02x%s|r',
+		colors[standing].r * 255,
+		colors[standing].g * 255,
+		colors[standing].b * 255,
+		GetText("FACTION_STANDING_LABEL" .. standing, UnitSex("player"))
+	);
 end
 
 function module:UPDATE_FACTION(event, ...)
