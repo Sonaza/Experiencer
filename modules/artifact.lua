@@ -165,11 +165,11 @@ function module:GetChatMessage()
 	));
 	
 	if(pointsSpent > 0) then
-		tinsert(outputText, ("at %s/%s power (%.1f%%) with %d to go"):format(
+		tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
 			BreakUpLargeNumbers(artifactXP),	
 			BreakUpLargeNumbers(xpForNextPoint),
 			progress * 100,
-			remaining
+			BreakUpLargeNumbers(remaining)
 		));
 	end
 	
