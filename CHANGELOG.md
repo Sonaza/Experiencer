@@ -1,3 +1,6 @@
+## 2.2.1
+* Fixed reputation module paragon reputations after reaching reward level.
+
 ## 2.2.0
 * Added new keybind for artifact bar: Shift + Middle Mouse will now open artifact talent window while artifact module is active.
 * Reputation module now supports paragon reputations.

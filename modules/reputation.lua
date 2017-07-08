@@ -50,13 +50,13 @@ function module:IsDisabled()
 end
 
 function module:Update(elapsed)
-	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+	
 end
 
 function module:CanLevelUp()
-	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
-	if(name and C_Reputation.IsFactionParagon(factionID)) then
-		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+	local _, _, _, _, _, factionID = GetWatchedFactionInfo();
+	if(factionID and C_Reputation.IsFactionParagon(factionID)) then
+		local _, _, _, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
 		return hasRewardPending;
 	end
 	return false;
@@ -76,6 +76,8 @@ function module:GetText()
 	
 	local standingText = "";
 	local isCapped = false;
+	local hasRewardPending = false;
+	local paragonLevel = 0;
 	
 	if(friendLevel) then
 		standingText = friendLevel;
@@ -90,11 +92,18 @@ function module:GetText()
 	end
 	
 	if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
-		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+		currentReputation, maxReputation, _, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
 		isCapped = false;
 		minReputation = 0;
-		currentReputation = currentValue;
-		maxReputation = threshold;
+		
+		paragonLevel = math.floor(currentReputation / maxReputation);
+		currentReputation = currentReputation % maxReputation;
+		
+		if(paragonLevel == 1) then
+			standingText = module:GetStandingColorText(standing+1);
+		elseif(paragonLevel > 1) then
+			standingText = string.format("%dx %s", paragonLevel, module:GetStandingColorText(standing+1));
+		end
 	end
 	
 	if(not isCapped) then
@@ -120,6 +129,10 @@ function module:GetText()
 		);
 	end
 	
+	if(hasRewardPending) then
+		tinsert(outputText, "|cff00ff00Paragon reward earned!|r");
+	end
+	
 	if(self.db.global.ShowGainedRep and module.recentReputations[name]) then
 		tinsert(outputText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
 	end
@@ -139,6 +152,8 @@ function module:GetChatMessage()
 	
 	local standingText = "";
 	local isCapped = false;
+	local hasRewardPending = false;
+	local paragonLevel = 0;
 	
 	if(friendLevel) then
 		standingText = friendLevel;
@@ -152,21 +167,27 @@ function module:GetChatMessage()
 		end
 	end
 	
-	
 	if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
-		local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+		currentReputation, maxReputation, _, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
 		isCapped = false;
 		minReputation = 0;
-		currentReputation = currentValue;
-		maxReputation = threshold;
+		
+		paragonLevel = math.floor(currentReputation / maxReputation);
+		currentReputation = currentReputation % maxReputation;
 	end
 	
 	if(not isCapped) then
 		local remaining_rep = maxReputation - currentReputation;
 		local progress = (currentReputation - minReputation) / (maxReputation - minReputation);
 		
-		return string.format("%s with %s: %s/%s (%d%%) with %s to go",
+		local paragonText = "";
+		if(paragonLevel > 0) then
+			paragonText = string.format(" (%dx paragon)", paragonLevel);
+		end
+		
+		return string.format("%s%s with %s: %s/%s (%d%%) with %s to go",
 			standingText,
+			paragonText,
 			name,
 			BreakUpLargeNumbers(currentReputation - minReputation),
 			BreakUpLargeNumbers(maxReputation - minReputation),
@@ -199,6 +220,8 @@ function module:GetBarData()
 		
 		local standingText = "";
 		local isCapped = false;
+		local hasRewardPending = false;
+		local paragonLevel = 0;
 		
 		if(friendLevel and not nextFriendThreshold) then
 			isCapped = true;
@@ -207,11 +230,12 @@ function module:GetBarData()
 		end
 		
 		if(isCapped and C_Reputation.IsFactionParagon(factionID)) then
-			local currentValue, threshold, rewardQuestID, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
+			currentReputation, maxReputation, _, hasRewardPending = C_Reputation.GetFactionParagonInfo(factionID);
 			isCapped = false;
 			minReputation = 0;
-			currentReputation = currentValue;
-			maxReputation = threshold;
+			
+			paragonLevel = math.floor(currentReputation / maxReputation);
+			currentReputation = currentReputation % maxReputation;
 		end
 		
 		data.level    = standing;
@@ -485,18 +509,27 @@ function module:GetStandingColorText(standing)
 		[6] = {r=0.00, g=1.00, b=0.00}, -- honored
 		[7] = {r=0.00, g=0.60, b=1.00}, -- revered
 		[8] = {r=0.00, g=1.00, b=1.00}, -- exalted
+		[9] = {r=0.00, g=1.00, b=1.00}, -- paragon
 	}
+	
+	local label;
+	if(standing < 9) then
+		label = GetText("FACTION_STANDING_LABEL" .. standing, UnitSex("player"));
+	else
+		label = "Paragon";
+	end
 	
 	return string.format('|cff%02x%02x%02x%s|r',
 		colors[standing].r * 255,
 		colors[standing].g * 255,
 		colors[standing].b * 255,
-		GetText("FACTION_STANDING_LABEL" .. standing, UnitSex("player"))
+		label
 	);
 end
 
 function module:UPDATE_FACTION(event, ...)
-	local name = GetWatchedFactionInfo();
+	local name, _, _, _, _, factionID = GetWatchedFactionInfo();
+	module.levelUpRequiresAction = (factionID and C_Reputation.IsFactionParagon(factionID));
 	
 	local instant = false;
 	if(name ~= module.Tracked or not name) then
