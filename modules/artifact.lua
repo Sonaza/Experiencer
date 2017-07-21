@@ -98,7 +98,8 @@ function module:GetText()
 		return "No artifact equipped";
 	end
 	
-	local outputText = {};
+	local primaryText = {};
+	local secondaryText = {};
 	
 	local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
 	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
@@ -108,22 +109,22 @@ function module:GetText()
 	local progress          = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
 	local progressColor     = Addon:GetProgressColor(progress);
 	
-	tinsert(outputText,
+	tinsert(primaryText,
 		("|cffffecB3%s|r (Rank %d):"):format(name, pointsSpent + numPoints)
 	);
 	
 	if(self.db.global.ShowRemaining) then
-		tinsert(outputText,
+		tinsert(primaryText,
 			("%s%s|r (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
 		);
 	else
-		tinsert(outputText,
+		tinsert(primaryText,
 			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(artifactXP), BreakUpLargeNumbers(xpForNextPoint), progressColor, progress * 100)
 		);
 	end
 	
 	if(self.db.global.ShowTotalArtifactPower) then
-		tinsert(outputText,
+		tinsert(secondaryText,
 			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(module:CalculateTotalArtifactPower()))
 		);
 	end
@@ -131,19 +132,19 @@ function module:GetText()
 	if(self.db.global.ShowBagArtifactPower) then
 		local totalPower = module:FindPowerItemsInInventory();
 		if(totalPower and totalPower > 0) then
-			tinsert(outputText,
+			tinsert(secondaryText,
 				("%s |cffa8ff00artifact power in bags|r"):format(BreakUpLargeNumbers(totalPower))
 			);
 		end
 	end
 	
 	if(self.db.global.ShowUnspentPoints and numPoints > 0) then
-		tinsert(outputText,
+		tinsert(secondaryText,
 			("|cff86ff33%d unspent point%s|r"):format(numPoints, numPoints == 1 and "" or "s")
 		);
 	end
 	
-	return table.concat(outputText, "  ");
+	return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
 end
 
 function module:HasChatMessage()

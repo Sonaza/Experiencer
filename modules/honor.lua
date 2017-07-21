@@ -41,7 +41,7 @@ function module:CanLevelUp()
 end
 
 function module:GetText()
-	local outputText = {};
+	local primaryText = {};
 	
 	local honorlevel 	    = UnitHonorLevel("player");
 	local prestige          = UnitPrestige("player");
@@ -57,43 +57,43 @@ function module:GetText()
 	local progressColor     = Addon:GetProgressColor(progress);
 	
 	if(self.db.global.ShowHonorLevel) then
-		tinsert(outputText, 
+		tinsert(primaryText, 
 			("|cffffd200Honor Level|r %d"):format(honorlevel)
 		);
 	end
 	
 	if(self.db.global.ShowPrestige and prestige > 0) then
-		tinsert(outputText, 
+		tinsert(primaryText, 
 			("|cffffd200Prestige|r %d"):format(prestige)
 		);
 	end
 	
 	if(self.db.global.ShowRemaining) then
-		tinsert(outputText,
+		tinsert(primaryText,
 			("%s%s|r (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
 		);
 	else
-		tinsert(outputText,
+		tinsert(primaryText,
 			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(honor), BreakUpLargeNumbers(honormax), progressColor, progress * 100)
 		);
 	end
 	
 	if(exhaustionThreshold > 0) then
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%d%% |cff6fafdfrested|r", restedPercentage)
 		);
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%d%% |cff6fafdfmultiplier|r", exhaustionStateMultiplier * 100)
 		);
 	end
 	
 	if(CanPrestige()) then
-		tinsert(outputText, 
+		tinsert(primaryText, 
 			"|cff86ff36Can prestige!|r"
 		);
 	end
 	
-	return table.concat(outputText, "  ");
+	return table.concat(primaryText, "  "), nil;
 end
 
 function module:HasChatMessage()

@@ -67,7 +67,7 @@ function module:GetText()
 		return "No active watched reputation";
 	end
 	
-	local outputText = {};
+	local primaryText = {};
 	
 	local rep_text = {};
 	
@@ -115,31 +115,29 @@ function module:GetText()
 		local color = Addon:GetProgressColor(progress);
 		
 		if(self.db.global.ShowRemaining) then
-			tinsert(outputText,
+			tinsert(primaryText,
 				string.format("%s (%s): %s%s|r (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(remainingReputation), color, 100 - progress * 100)
 			);
 		else
-			tinsert(outputText,
+			tinsert(primaryText,
 				string.format("%s (%s): %s%s|r / %s (%s%.1f|r%%)", name, standingText, color, BreakUpLargeNumbers(realCurrentReputation), BreakUpLargeNumbers(realMaxReputation), color, progress * 100)
 			);
 		end
 	else
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%s (%s)", name, standingText)
 		);
 	end
 	
 	if(hasRewardPending) then
-		tinsert(outputText, "|cff00ff00Paragon reward earned!|r");
+		tinsert(primaryText, "|cff00ff00Paragon reward earned!|r");
 	end
 	
 	if(self.db.global.ShowGainedRep and module.recentReputations[name]) then
-		tinsert(outputText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
+		tinsert(primaryText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
 	end
 	
-	ExperiencerBarText:SetText(table.concat(rep_text, "  "));
-	
-	return table.concat(outputText, "  ");
+	return table.concat(primaryText, "  ");
 end
 
 function module:HasChatMessage()

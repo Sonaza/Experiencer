@@ -42,6 +42,131 @@
 		<BarColor r="1" g="1" b="1"/>
 	</StatusBar>
 	
+	<Frame name="ExperiencerModuleBarsTemplate" mixin="ExperiencerModuleBarsMixin" virtual="true">
+		<Frames>
+			<StatusBar name="$parentRested" parentKey="rested" inherits="ExperiencerBarTemplate" hidden="true"/>
+			<StatusBar name="$parentVisualPrimary" parentKey="visualPrimary" inherits="ExperiencerBarTemplate" hidden="true">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStriped" horizTile="true" alphaMode="ADD"/>
+			</StatusBar>
+			<StatusBar name="$parentVisualSecondary" parentKey="visualSecondary" inherits="ExperiencerBarTemplate" hidden="true">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStripedOpposite" horizTile="true" alphaMode="ADD"/>
+			</StatusBar>
+			<StatusBar name="$parentChange" parentKey="change" inherits="ExperiencerBarTemplate">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
+				<Animations>
+					<AnimationGroup parentKey="fadegain" setToFinalAlpha="true">
+						<Alpha fromAlpha="0" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>
+						<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadegain_in" setToFinalAlpha="true">
+						<Alpha fromAlpha="0" toAlpha="1" duration="0.25" order="1" smoothing="IN_OUT"/>
+						<Alpha fromAlpha="1" toAlpha="1" duration="1.00" order="2" smoothing="IN_OUT"/>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadegain_out" setToFinalAlpha="true">
+						<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="1" smoothing="IN_OUT"/>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadeloss" setToFinalAlpha="true">
+						<Alpha fromAlpha="1" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>
+						<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
+					</AnimationGroup>
+				</Animations>
+			</StatusBar>
+			<StatusBar name="$parentMain" parentKey="main" inherits="ExperiencerAnimatedBarTemplate">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture"/>
+				<Frames>
+					<Frame name="$parentSpark" parentKey="spark">
+						<Size x="9" y="24"/>
+						<Anchors>
+							<Anchor center="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/>
+						</Anchors>
+						<Layers>
+							<Layer level="ARTWORK">
+								<Texture setAllPoints="true" file="Interface\UNITPOWERBARALT\DeathwingBlood_Horizontal_Spark" alphaMode="ADD">
+									<Color r="1" g="1" b="1"/>
+								</Texture>
+							</Layer>
+						</Layers>
+						<Animations>
+							<AnimationGroup parentKey="fade" setToFinalAlpha="true">
+								<Alpha fromAlpha="0.5" toAlpha="1" duration="0.2" order="1" smoothing="IN"/>
+								<Alpha fromAlpha="1" toAlpha="1" duration="0.5" order="2" smoothing="IN_OUT"/>
+								<Alpha fromAlpha="1" toAlpha="0.5" duration="0.5" order="3" smoothing="OUT"/>
+							</AnimationGroup>
+						</Animations>
+					</Frame>
+				</Frames>
+			</StatusBar>
+			<StatusBar name="$parentColor" parentKey="color" inherits="ExperiencerBarTemplate">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
+			</StatusBar>
+			<StatusBar name="$parentHighlight" parentKey="highlight" inherits="ExperiencerBarTemplate" hidden="true">
+				<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
+				<Color r="1" g="0.7" b="0"/>
+				<Animations>
+					<AnimationGroup parentKey="flash" looping="REPEAT">
+						<Alpha fromAlpha="0.6" toAlpha="0.1" duration="0.5" smoothing="IN_OUT" order="1"/>
+						<Alpha fromAlpha="0.1" toAlpha="0.6" duration="0.5" smoothing="IN_OUT" order="2"/>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadein" setToFinalAlpha="true">
+						<Alpha fromAlpha="0" toAlpha="0.6" duration="0.5" order="1" smoothing="OUT"/>
+						<Scripts>
+							<OnPlay>
+								self:GetParent():Show();
+							</OnPlay>
+							<OnFinished>
+								self:GetParent().flash:Play();
+							</OnFinished>
+						</Scripts>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadeout" setToFinalAlpha="true">
+						<Alpha fromAlpha="0.6" toAlpha="0" duration="0.5" order="1" smoothing="OUT"/>
+						<Scripts>
+							<OnFinished>
+								self:GetParent():Hide();
+							</OnFinished>
+						</Scripts>
+					</AnimationGroup>
+				</Animations>
+			</StatusBar>
+			<Frame name="$parentTextFrame" parentKey="textFrame" hidden="true">
+				<Size x="1500" y="20"/>
+				<Anchors>
+					<Anchor point="BOTTOM" relativePoint="BOTTOM" relativeTo="$parent" x="0" y="0"/>
+				</Anchors>
+				<Animations>
+					<AnimationGroup parentKey="fadein" setToFinalAlpha="true">
+						<Alpha fromAlpha="0" toAlpha="1" duration="0.1" order="1" smoothing="IN_OUT"/>
+						<Scripts>
+							<OnPlay>
+								self:GetParent():Show();
+							</OnPlay>
+						</Scripts>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadeout" setToFinalAlpha="true">
+						<Alpha fromAlpha="1" toAlpha="0" duration="0.2" order="1" smoothing="IN_OUT"/>
+						<Scripts>
+							<OnFinished>
+								self:GetParent():Hide();
+							</OnFinished>
+						</Scripts>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadeinHalf" setToFinalAlpha="true">
+						<Alpha fromAlpha="0.42" toAlpha="1" duration="0.1" order="1" smoothing="IN_OUT"/>
+					</AnimationGroup>
+					<AnimationGroup parentKey="fadeoutHalf" setToFinalAlpha="true">
+						<Alpha fromAlpha="1" toAlpha="0.42" duration="0.2" order="1" smoothing="IN_OUT"/>
+					</AnimationGroup>
+				</Animations>
+				<Layers>
+					<Layer level="ARTWORK">
+						<FontString name="$parentText" parentKey="text" inherits="ExperiencerFont" justifyH="CENTER" setAllPoints="true">
+						</FontString>
+					</Layer>
+				</Layers>
+			</Frame>
+		</Frames>
+	</Frame>
+	
 	<Frame name="ExperiencerFrame" parent="UIParent" frameStrata="HIGH" enableMouse="true">
 		<Size y="10"/>
 		<Anchors>
@@ -56,128 +181,56 @@
 			</Layer>
 		</Layers>
 		<Frames>
-			<Frame name="$parentBars" parentKey="bars" setAllPoints="true" hidden="true">
+			<Frame name="$parentBars" parentKey="bars" setAllPoints="true" hidden="false">
 				<Frames>
-					<StatusBar name="$parentRested" parentKey="rested" inherits="ExperiencerBarTemplate" hidden="true"/>
-					<StatusBar name="$parentVisualPrimary" parentKey="visualPrimary" inherits="ExperiencerBarTemplate" hidden="true">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStriped" horizTile="true" alphaMode="ADD"/>
-					</StatusBar>
-					<StatusBar name="$parentVisualSecondary" parentKey="visualSecondary" inherits="ExperiencerBarTemplate" hidden="true">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTextureStripedOpposite" horizTile="true" alphaMode="ADD"/>
-					</StatusBar>
-					<StatusBar name="$parentChange" parentKey="change" inherits="ExperiencerBarTemplate">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
-						<Animations>
-							<AnimationGroup parentKey="fadegain" setToFinalAlpha="true">
-								<Alpha fromAlpha="0" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>
-								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadegain_in" setToFinalAlpha="true">
-								<Alpha fromAlpha="0" toAlpha="1" duration="0.25" order="1" smoothing="IN_OUT"/>
-								<Alpha fromAlpha="1" toAlpha="1" duration="1.00" order="2" smoothing="IN_OUT"/>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadegain_out" setToFinalAlpha="true">
-								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="1" smoothing="IN_OUT"/>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadeloss" setToFinalAlpha="true">
-								<Alpha fromAlpha="1" toAlpha="1" duration="0.15" order="1" smoothing="IN_OUT"/>
-								<Alpha fromAlpha="1" toAlpha="0" duration="0.8" order="2" smoothing="IN_OUT"/>
-							</AnimationGroup>
-						</Animations>
-					</StatusBar>
-					<StatusBar name="$parentMain" parentKey="main" inherits="ExperiencerAnimatedBarTemplate">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture"/>
-						<Frames>
-							<Frame name="$parentSpark" parentKey="spark">
-								<Size x="9" y="24"/>
-								<Anchors>
-									<Anchor center="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/>
-								</Anchors>
-								<Layers>
-									<Layer level="ARTWORK">
-										<Texture setAllPoints="true" file="Interface\UNITPOWERBARALT\DeathwingBlood_Horizontal_Spark" alphaMode="ADD">
-											<Color r="1" g="1" b="1"/>
-										</Texture>
-									</Layer>
-								</Layers>
-								<Animations>
-									<AnimationGroup parentKey="fade" setToFinalAlpha="true">
-										<Alpha fromAlpha="0.5" toAlpha="1" duration="0.2" order="1" smoothing="IN"/>
-										<Alpha fromAlpha="1" toAlpha="1" duration="0.5" order="2" smoothing="IN_OUT"/>
-										<Alpha fromAlpha="1" toAlpha="0.5" duration="0.5" order="3" smoothing="OUT"/>
-									</AnimationGroup>
-								</Animations>
-							</Frame>
-						</Frames>
-					</StatusBar>
-					<StatusBar name="$parentColor" parentKey="color" inherits="ExperiencerBarTemplate">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
-					</StatusBar>
-					<StatusBar name="$parentHighlight" parentKey="highlight" inherits="ExperiencerBarTemplate" hidden="true">
-						<BarTexture file="Interface\AddOns\Experiencer\Media\BarTexture" alphaMode="ADD"/>
-						<Color r="1" g="0.7" b="0"/>
-						<Animations>
-							<AnimationGroup parentKey="flash" looping="REPEAT">
-								<Alpha fromAlpha="0.6" toAlpha="0.1" duration="0.5" smoothing="IN_OUT" order="1"/>
-								<Alpha fromAlpha="0.1" toAlpha="0.6" duration="0.5" smoothing="IN_OUT" order="2"/>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadein" setToFinalAlpha="true">
-								<Alpha fromAlpha="0" toAlpha="0.6" duration="0.5" order="1" smoothing="OUT"/>
-								<Scripts>
-									<OnPlay>
-										self:GetParent():Show();
-									</OnPlay>
-									<OnFinished>
-										self:GetParent().flash:Play();
-									</OnFinished>
-								</Scripts>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadeout" setToFinalAlpha="true">
-								<Alpha fromAlpha="0.6" toAlpha="0" duration="0.5" order="1" smoothing="OUT"/>
-								<Scripts>
-									<OnFinished>
-										self:GetParent():Hide();
-									</OnFinished>
-								</Scripts>
-							</AnimationGroup>
-						</Animations>
-					</StatusBar>
-					
-					<Frame name="ExperiencerBarTextFrame" parentKey="textframe" hidden="true">
-						<Size x="1500" y="20"/>
+					<Frame name="$parentModule1" parentKey="moduleIndex1" inherits="ExperiencerModuleBarsTemplate" id="1"/>
+					<Frame name="$parentModule2" parentKey="moduleIndex2" inherits="ExperiencerModuleBarsTemplate" id="2"/>
+					<Frame name="$parentModule3" parentKey="moduleIndex3" inherits="ExperiencerModuleBarsTemplate" id="3"/>
+				</Frames>
+			</Frame>
+			<Frame parentKey="SplitsAlert" inherits="GlowBoxTemplate" enableMouse="true" frameStrata="DIALOG" hidden="true">
+				<Size x="220" y="100"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parent" relativePoint="RIGHT" x="19" y=""/>
+				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString parentKey="Text" inherits="GameFontHighlightLeft" justifyV="TOP" text="EXPERIENCER_SPLITS_TIP">
+							<Size x="188" y="0"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" x="16" y="-24"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Button parentKey="CloseButton" inherits="UIPanelCloseButton">
 						<Anchors>
-							<Anchor point="BOTTOM" relativePoint="BOTTOM" relativeTo="$parent" x="0" y="0"/>
+							<Anchor point="TOPRIGHT" x="6" y="6"/>
 						</Anchors>
-						<Animations>
-							<AnimationGroup parentKey="fadein" setToFinalAlpha="true">
-								<Alpha fromAlpha="0" toAlpha="1" duration="0.1" order="1" smoothing="IN_OUT"/>
-								<Scripts>
-									<OnPlay>
-										self:GetParent():Show();
-									</OnPlay>
-								</Scripts>
-							</AnimationGroup>
-							<AnimationGroup parentKey="fadeout" setToFinalAlpha="true">
-								<Alpha fromAlpha="1" toAlpha="0" duration="0.2" order="1" smoothing="IN_OUT"/>
-								<Scripts>
-									<OnFinished>
-										self:GetParent():Hide();
-									</OnFinished>
-								</Scripts>
-							</AnimationGroup>
-						</Animations>
-						<Layers>
-							<Layer level="ARTWORK">
-								<FontString name="ExperiencerBarText" inherits="ExperiencerFont" justifyH="CENTER">
-									<Size x="1500" y="12"/>
-									<Anchors>
-										<Anchor point="CENTER" relativePoint="CENTER" relativeTo="$parent" x="0" y="0"/>
-									</Anchors>
-								</FontString>
-							</Layer>
-						</Layers>
+						<Scripts>
+							<OnClick>
+								self:GetParent():Hide();
+								ExperiencerSplitsAlertCloseButton_OnClick(self);
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Frame parentKey="Arrow" inherits="GlowBoxArrowTemplate">
+						<Anchors>
+							<Anchor point="RIGHT" relativePoint="LEFT" x="34" y="16"/>
+						</Anchors>
 					</Frame>
 				</Frames>
+				<Scripts>
+					<OnLoad>
+						SetClampedTextureRotation(self.Arrow.Arrow, 90);
+						SetClampedTextureRotation(self.Arrow.Glow, 90);
+						self.Arrow.Glow:Hide();
+					</OnLoad>
+					<OnShow>
+						self:SetHeight(self.Text:GetHeight()+42);
+					</OnShow>
+				</Scripts>
 			</Frame>
 		</Frames>
 		<Scripts>

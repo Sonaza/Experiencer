@@ -1,8 +1,5 @@
-package-as: "!Vendorer"
+package-as: Experiencer
 enable-nolib-creation: no
-
-# move-folders:
-#   Vendorer: "!Vendorer"
   
 manual-changelog:
   filename: CHANGELOG.md

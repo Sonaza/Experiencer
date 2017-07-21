@@ -126,7 +126,8 @@ function module:Update(elapsed)
 end
 
 function module:GetText()
-	local outputText = {};
+	local primaryText = {};
+	local secondaryText = {};
 	
 	local current_xp, max_xp    = UnitXP("player"), UnitXPMax("player");
 	local rested_xp             = GetXPExhaustion() or 0;
@@ -136,17 +137,17 @@ function module:GetText()
 	local progressColor         = Addon:GetProgressColor(progress);
 	
 	if(self.db.global.ShowRemaining) then
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%s%s|r (%s%.1f|r%%)", progressColor, BreakUpLargeNumbers(remaining_xp), progressColor, 100 - progress * 100)
 		);
 	else
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%s%s|r / %s (%s%.1f|r%%)", progressColor, BreakUpLargeNumbers(current_xp), BreakUpLargeNumbers(max_xp), progressColor, progress * 100)
 		);
 	end
 	
 	if(rested_xp > 0) then
-		tinsert(outputText,
+		tinsert(primaryText,
 			string.format("%d%% |cff6fafdfrested|r", math.ceil(rested_xp / max_xp * 100))
 		);
 	end
@@ -155,19 +156,19 @@ function module:GetText()
 		local hourlyXP, timeToLevel = module:CalculateHourlyXP();
 		
 		if(self.db.global.ShowGainedXP) then
-			tinsert(outputText,
+			tinsert(secondaryText,
 				string.format("+%s |cffffcc00xp|r", BreakUpLargeNumbers(module.session.GainedXP))
 			);
 		end
 		
 		if(self.db.global.ShowHourlyXP) then
-			tinsert(outputText,
+			tinsert(primaryText,
 				string.format("%s |cffffcc00xp/h|r", BreakUpLargeNumbers(hourlyXP))
 			);
 		end
 		
 		if(self.db.global.ShowTimeToLevel) then
-			tinsert(outputText,
+			tinsert(primaryText,
 				string.format("%s |cff80e916until level|r", Addon:FormatTime(timeToLevel))
 			);
 		end
@@ -175,7 +176,7 @@ function module:GetText()
 	
 	if(self.db.global.ShowQuestsToLevel) then
 		if(module.session.QuestsToLevel > 0 and module.session.QuestsToLevel ~= math.huge) then
-			tinsert(outputText,
+			tinsert(secondaryText,
 				string.format("~%s |cff80e916quests|r", module.session.QuestsToLevel)
 			);
 		end
@@ -190,17 +191,17 @@ function module:GetText()
 		end
 		
 		if(not self.db.global.QuestXP.AddIncomplete) then
-			tinsert(outputText,
+			tinsert(secondaryText,
 				string.format("%s |cff80e916xp from completed quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), levelUpAlert)
 			);
 		elseif(self.db.global.QuestXP.AddIncomplete) then
-			tinsert(outputText,
+			tinsert(secondaryText,
 				string.format("%s |cffffdd00+|r %s |cff80e916xp from quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), BreakUpLargeNumbers(math.floor(incompleteXP)), levelUpAlert)
 			);
 		end
 	end
 	
-	return table.concat(outputText, "  ");
+	return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
 end
 
 function module:HasChatMessage()
@@ -534,7 +535,6 @@ end
 
 function module:QUEST_LOG_UPDATE()
 	module:Refresh(true);
-	Addon:UpdateText();
 end
 
 function module:UNIT_INVENTORY_CHANGED(event, unit)
