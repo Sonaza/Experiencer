@@ -17,7 +17,7 @@
 			<Offset>
 				<AbsDimension x="0" y="-2"/>
 			</Offset>
-			<Color r="0" g="0" b="0" a="0.35"/>
+			<Color r="0" g="0" b="0" a="0.45"/>
 		</Shadow>
 		<FontHeight>
 			<AbsValue val="13"/>

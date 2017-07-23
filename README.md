@@ -28,4 +28,4 @@ Experiencer options can be accessed by right clicking the bar or the DataBroker 
 * Shift left-click pastes current statistics to chat editbox. Shift control left-click for quick paste.
 
 ## Dependencies
-Experiencer uses Ace3 and LibDataBroker which are included in the /libs directory.
+Experiencer uses Ace3, LibSharedMedia and LibDataBroker which are included in the /libs directory.

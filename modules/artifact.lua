@@ -17,9 +17,12 @@ local module = Addon:RegisterModule("artifact", {
 			UnspentInChatMessage = false,
 			ShowBagArtifactPower = true,
 			VisualizeBagArtifactPower = true,
+			AbbreviateLargeValues = true,
 		},
 	},
 });
+
+module.tooltipText = "You can open artifact talent menu by shift middle clicking."
 
 module.levelUpRequiresAction = true;
 module.hasCustomMouseCallback = true;
@@ -93,6 +96,13 @@ function module:CalculateTotalArtifactPower()
 	return totalXP + currentXP;
 end
 
+function module:FormatNumber(value)
+	if(self.db.global.AbbreviateLargeValues) then
+		return Addon:FormatNumberFancy(value);
+	end
+	return BreakUpLargeNumbers(value);
+end
+
 function module:GetText()
 	if(not HasArtifactEquipped()) then
 		return "No artifact equipped";
@@ -115,17 +125,17 @@ function module:GetText()
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(primaryText,
-			("%s%s|r (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(remaining), progressColor, 100 - progress * 100)
+			("%s%s|r (%s%.1f|r%%)"):format(progressColor, module:FormatNumber(remaining), progressColor, 100 - progress * 100)
 		);
 	else
 		tinsert(primaryText,
-			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, BreakUpLargeNumbers(artifactXP), BreakUpLargeNumbers(xpForNextPoint), progressColor, progress * 100)
+			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, module:FormatNumber(artifactXP), module:FormatNumber(xpForNextPoint), progressColor, progress * 100)
 		);
 	end
 	
 	if(self.db.global.ShowTotalArtifactPower) then
 		tinsert(secondaryText,
-			("%s |cffffdd00total artifact power|r"):format(BreakUpLargeNumbers(module:CalculateTotalArtifactPower()))
+			("%s |cffffdd00total artifact power|r"):format(module:FormatNumber(module:CalculateTotalArtifactPower()))
 		);
 	end
 	
@@ -133,7 +143,7 @@ function module:GetText()
 		local totalPower = module:FindPowerItemsInInventory();
 		if(totalPower and totalPower > 0) then
 			tinsert(secondaryText,
-				("%s |cffa8ff00artifact power in bags|r"):format(BreakUpLargeNumbers(totalPower))
+				("%s |cffa8ff00artifact power in bags|r"):format(module:FormatNumber(totalPower))
 			);
 		end
 	end
@@ -167,10 +177,10 @@ function module:GetChatMessage()
 	
 	if(pointsSpent > 0) then
 		tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
-			BreakUpLargeNumbers(artifactXP),	
-			BreakUpLargeNumbers(xpForNextPoint),
+			module:FormatNumber(artifactXP),	
+			module:FormatNumber(xpForNextPoint),
 			progress * 100,
-			BreakUpLargeNumbers(remaining)
+			module:FormatNumber(remaining)
 		));
 	end
 	
@@ -260,6 +270,15 @@ function module:GetOptionsMenu()
 			text = "Visualize unspent artifact power in bags",
 			func = function() self.db.global.VisualizeBagArtifactPower = not self.db.global.VisualizeBagArtifactPower; module:RefreshText(); end,
 			checked = function() return self.db.global.VisualizeBagArtifactPower; end,
+			isNotRadio = true,
+		},
+		{
+			text = " ", isTitle = true, notCheckable = true,
+		},
+		{
+			text = "Abbreviate large numbers",
+			func = function() self.db.global.AbbreviateLargeValues = not self.db.global.AbbreviateLargeValues; module:RefreshText(); end,
+			checked = function() return self.db.global.AbbreviateLargeValues; end,
 			isNotRadio = true,
 		},
 	};

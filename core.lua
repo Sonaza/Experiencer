@@ -11,6 +11,10 @@ _G[ADDON_NAME] = Addon;
 Addon:SetDefaultModuleLibraries("AceEvent-3.0");
 
 local AceDB = LibStub("AceDB-3.0");
+local LibSharedMedia = LibStub("LibSharedMedia-3.0");
+
+-- Adding default media to LibSharedMedia in case they're not already added
+LibSharedMedia:Register("font", "DorisPP", [[Interface\AddOns\Experiencer\media\DORISPP.TTF]]);
 
 EXPERIENCER_SPLITS_TIP = "You can now split Experiencer bar in up to three different sections allowing you to display more information at once.|n|nRight-click the bar to see options.";
 
@@ -70,12 +74,17 @@ function Addon:OnInitialize()
 			ActiveModule    = nil, -- Old setting now obsolete
 			NumSplits       = 1,
 			ActiveModules   = { },
+			
+			DataBrokerSource = 1,
 		},
 		
 		global = {
 			AnchorPoint	    = "BOTTOM",
 			BigBars         = false,
 			FlashLevelUp    = true,
+			
+			FontFace = "DorisPP",
+			FontScale = 1,
 			
 			Color = {
 				UseClassColor = true,
@@ -96,6 +105,8 @@ function ExperiencerSplitsAlertCloseButton_OnClick(self)
 end
 
 function Addon:OnEnable()
+	Addon:InitializeDataBroker();
+	
 	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
 	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
 	Addon:RegisterEvent("PET_BATTLE_CLOSE");
@@ -124,8 +135,6 @@ function Addon:OnEnable()
 	
 	Addon:RefreshBars(true);
 	Addon:UpdateVisiblity();
-	
-	Addon:InitializeDataBroker();
 end
 
 function Addon:IsBarVisible()
@@ -211,13 +220,33 @@ end
 function Addon:FormatNumber(num)
 	num = tonumber(num);
 	
-	if(num > 1000000) then
+	if(num >= 1000000) then
 		num = roundnum((num / 1000000), 2) .. "m";
-	elseif(num > 1000) then
+	elseif(num >= 1000) then
 		num = roundnum((num / 1000), 2) .. "k";
 	end
 	
 	return num;
+end
+
+function Addon:FormatNumberFancy(num, billions)
+	billions = billions or true;
+	num = tonumber(num);
+	
+	local divisor = 1;
+	local suffix = "";
+	if(num >= 1e9 and billions) then
+		suffix = "b";
+		divisor = 1e9;
+	elseif(num >= 1e6) then
+		suffix = "m";
+		divisor = 1e6;
+	elseif(num >= 1e3) then
+		suffix = "k";
+		divisor = 1e3;
+	end
+	
+	return BreakUpLargeNumbers(num / divisor) .. suffix;
 end
 
 function Addon:GetCurrentSplit()
@@ -235,10 +264,10 @@ end
 
 function Addon:RefreshText(module)
 	for _, moduleFrame in Addon:GetModuleFrameIterator() do
-		if(moduleFrame.module == module) then
+		if(not module or moduleFrame.module == module) then
 			moduleFrame:RefreshText();
-			return;
 		end
+		if(moduleFrame.module == module) then return end
 	end
 end
 
@@ -291,7 +320,7 @@ function Addon:UpdateFrames()
 	if(not Addon.db.global.BigBars) then
 		ExperiencerFrame:SetHeight(10);
 	else
-		ExperiencerFrame:SetHeight(18);
+		ExperiencerFrame:SetHeight(17);
 	end
 	
 	local numSplits = Addon:GetCurrentSplit();
@@ -360,11 +389,17 @@ function Addon:UpdateFrames()
 		moduleFrame.textFrame:SetPoint(anchor, moduleFrame, anchor);
 		moduleFrame.textFrame:SetWidth(sectionWidth);
 		
+		local fontPath = LibSharedMedia:Fetch("font", self.db.global.FontFace);
+		ExperiencerFont:SetFont(fontPath, math.floor(10 * self.db.global.FontScale), "OUTLINE");
+		ExperiencerBigFont:SetFont(fontPath, math.floor(13 * self.db.global.FontScale), "OUTLINE");
+		
+		local frameHeightMultiplier = (self.db.global.FontScale - 1.0) * 0.55 + 1.0;
+		
 		if(not Addon.db.global.BigBars) then
-			moduleFrame.textFrame:SetHeight(20);
+			moduleFrame.textFrame:SetHeight(math.max(18, 20 * frameHeightMultiplier));
 			moduleFrame.textFrame.text:SetFontObject("ExperiencerFont");
 		else
-			moduleFrame.textFrame:SetHeight(28);
+			moduleFrame.textFrame:SetHeight(math.max(24, 28 * frameHeightMultiplier));
 			moduleFrame.textFrame.text:SetFontObject("ExperiencerBigFont");
 		end
 		
@@ -497,20 +532,31 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 end
 
 function Addon:ShouldShowSecondaryText(moduleIndex)
-	return self.db.char.NumSplits < 3 or (Addon.hovering and Addon:GetModuleIndexFromMousePosition() == moduleIndex);
+	return self.db.char.NumSplits < 3 or (Addon.Hovering and Addon:GetModuleIndexFromMousePosition() == moduleIndex);
 end
 
 function ExperiencerModuleBarsMixin:RefreshText()
+	local text = "";
+	local brokerText = "";
+	
 	if(self.module) then
-		local text, secondaryText = self.module:GetText();
+		local primaryText, secondaryText = self.module:GetText();
+		if(secondaryText and string.len(secondaryText) == 0) then secondaryText = nil end
+		
 		if(secondaryText and Addon:ShouldShowSecondaryText(self:GetID())) then
-			text = string.trim(text .. "  " .. secondaryText);
+			text = string.trim(primaryText .. "  " .. secondaryText);
 		elseif(secondaryText) then
-			text = string.trim(text .. "  |cffffff00+|r");
+			text = string.trim(primaryText .. "  |cffffff00+|r");
+		else
+			text = string.trim(primaryText);
 		end
-		self.textFrame.text:SetText(text);
-	else
-		self.textFrame.text:SetText("");
+		
+		brokerText = string.trim(primaryText .. "  " .. (secondaryText or ""));
+	end
+	
+	self.textFrame.text:SetText(text);
+	if(Addon.db.char.DataBrokerSource == self:GetID()) then
+		Addon:UpdateDataBrokerText(brokerText);
 	end
 	
 	local numSplits = Addon:GetCurrentSplit();
@@ -522,7 +568,7 @@ function ExperiencerModuleBarsMixin:RefreshText()
 	self.textFrame:SetWidth(math.max(sectionWidth, stringWidth + 26));
 	self.textFrame:SetClampedToScreen(true);
 	
-	if(Addon.hovering and Addon:GetModuleIndexFromMousePosition() == self:GetID()) then
+	if(Addon.Hovering and Addon:GetModuleIndexFromMousePosition() == self:GetID()) then
 		Addon.ExpandedTextField = self:GetID();
 	elseif(Addon.ExpandedTextField == self:GetID()) then
 		Addon.ExpandedTextField = nil;
@@ -856,19 +902,80 @@ function Addon:SetSplits(newSplits)
 	
 	if(oldSplits < newSplits) then
 		for index=2, newSplits do
-			if(not self.db.char.ActiveModules[index]) then
-				local newModule = Addon:FindValidModuleForBar(index);
-				if(newModule) then
-					Addon:SetModule(index, newModule.id, true);
-				else
-					self.db.char.NumSplits = index - 1;
-					break;
-				end
+			local moduleId = self.db.char.ActiveModules[index];
+			if(not moduleId) then
+				local newModule = Addon:FindValidModuleForBar(index, 1, index);
+				moduleId = newModule.id;
+			end
+			if(moduleId) then
+				Addon:SetModule(index, moduleId, true);
+			else
+				self.db.char.NumSplits = index - 1;
+				break;
 			end
 		end
 	end
 	
 	Addon:UpdateFrames();
+	Addon:RefreshText();
+end
+
+function Addon:GenerateFontsMenu(fontsMenu, fontsList, startIndex)
+	local fontsAdded = 0;
+	local numFonts = #fontsList;
+	for index = startIndex, numFonts do
+		local font = fontsList[index];
+		tinsert(fontsMenu, {
+			text = fontsList[index],
+			func = function()
+				self.db.global.FontFace = fontsList[index];
+				Addon:UpdateFrames();
+				CloseMenus();
+			end,
+			checked = function() return self.db.global.FontFace == fontsList[index]; end,
+		});
+		fontsAdded = fontsAdded + 1;
+		if(fontsAdded > 30 and index < numFonts) then
+			local subMenu = {};
+			Addon:GenerateFontsMenu(subMenu, fontsList, index+1);
+			tinsert(fontsMenu, {
+				text = "|cffffd200More|r",
+				hasArrow = true,
+				menuList = subMenu,
+				notCheckable = true,
+			});
+			break;
+		end
+	end
+end
+
+function Addon:GetSharedFonts()
+	local sharedFonts = LibSharedMedia:List("font");
+	local numFonts = #sharedFonts;
+	
+	local fontsMenu = {};
+	Addon:GenerateFontsMenu(fontsMenu, sharedFonts, 1);
+	
+	return fontsMenu;
+end
+
+function Addon:GetFontScaleMenu()
+	local windowScales = { 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, };
+	local menu = {};
+	
+	for index, scale in ipairs(windowScales) do
+		tinsert(menu, {
+			text = string.format("%d%%", scale * 100),
+			func = function()
+				self.db.global.FontScale = scale;
+				Addon:UpdateFrames();
+				CloseMenus();
+			end,
+			checked = function() return self.db.global.FontScale == scale end,
+		});
+	end
+	
+	return menu;
 end
 
 function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
@@ -981,6 +1088,24 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 					text = " ", isTitle = true, notCheckable = true,
 				},
 				{
+					text = "Font", isTitle = true, notCheckable = true,
+				},
+				{
+					text = string.format("Font face |cffcccccc(%s)|r", self.db.global.FontFace),
+					hasArrow = true,
+					notCheckable = true,
+					menuList = Addon:GetSharedFonts(),
+				},
+				{
+					text = string.format("Font scale |cffcccccc(%d%%)|r", self.db.global.FontScale * 100),
+					hasArrow = true,
+					notCheckable = true,
+					menuList = Addon:GetFontScaleMenu(),
+				},
+				{
+					text = " ", isTitle = true, notCheckable = true,
+				},
+				{
 					text = "Bar Color", isTitle = true, notCheckable = true,
 				},
 				{
@@ -1077,6 +1202,9 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 			end,
 			checked = function() return self.db.char.NumSplits == 3; end,
 			disabled = numTotalEnabled < 3,
+			tooltipTitle = "Split into three",
+			tooltipText = "When splitting into three the text is shortened and you can hover over the bar to view full text.|n|nYou will see a plus symbol (+) when some information is hidden.",
+			tooltipOnButton = 1,
 		},
 		{
 			text = "", isTitle = true, notCheckable = true,
@@ -1114,6 +1242,9 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 			hasArrow = true,
 			menuList = module:GetOptionsMenu() or {},
 			disabled = module:IsDisabled(),
+			-- tooltipTitle = module.label,
+			-- tooltipText = module.tooltipText,
+			-- tooltipOnButton = module.tooltipText and 1,
 		});
 	end
 	
@@ -1156,9 +1287,9 @@ function Experiencer_OnMouseDown(self, button)
 	
 	local clickedModuleIndex = Addon:GetModuleIndexFromMousePosition();
 	
-	local activeModule = Addon:GetModuleFromModuleIndex(clickedModuleIndex);
-	if(activeModule and activeModule.hasCustomMouseCallback) then
-		local hadAction = activeModule:OnMouseDown(button);
+	local clickedModule = Addon:GetModuleFromModuleIndex(clickedModuleIndex);
+	if(clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseDown) then
+		local hadAction = clickedModule:OnMouseDown(button);
 		if(hadAction) then return end
 	end
 	
@@ -1180,6 +1311,14 @@ function Experiencer_OnMouseDown(self, button)
 end
 
 function Experiencer_OnMouseWheel(self, delta)
+	local clickedModuleIndex = Addon:GetModuleIndexFromMousePosition();
+	
+	local clickedModule = Addon:GetModuleFromModuleIndex(clickedModuleIndex);
+	if(clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseWheel) then
+		local hadAction = clickedModule:OnMouseWheel(delta);
+		if(hadAction) then return end
+	end
+	
 	if(IsControlKeyDown()) then
 		local hoveredModuleIndex = Addon:GetModuleIndexFromMousePosition();
 		
@@ -1195,7 +1334,8 @@ function Experiencer_OnMouseWheel(self, delta)
 end
 
 function Experiencer_OnEnter(self)
-	Addon.hovering = true;
+	Addon.Hovering = true;
+	Addon:RefreshText();
 	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
 			moduleFrame.textFrame.fadeout:Stop();
@@ -1205,7 +1345,8 @@ function Experiencer_OnEnter(self)
 end
 
 function Experiencer_OnLeave(self)
-	Addon.hovering = false;
+	Addon.Hovering = false;
+	Addon:RefreshText();
 	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
 			moduleFrame.textFrame.fadein:Stop();
@@ -1228,12 +1369,14 @@ function Experiencer_OnUpdate(self, elapsed)
 			moduleFrame:OnUpdate(elapsed);
 		end
 	end
+	
+	if(Addon.Hovering) then
+		Addon:RefreshText();
+	end
 end
 
 function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
-	
-	self:RefreshText();
 	
 	-- if(self.LastExpandedTextField ~= Addon.ExpandedTextField) then
 	-- 	if(Addon.ExpandedTextField and Addon.ExpandedTextField ~= self:GetID()) then
@@ -1342,4 +1485,8 @@ function Addon:FormatTime(t)
 	else
 		return format(S, s)
 	end
+end
+
+if(not LibSharedMedia) then
+	error("LibSharedMedia not loaded. You should restart the game.");
 end

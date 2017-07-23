@@ -25,7 +25,10 @@ local module = Addon:RegisterModule("reputation", {
 	},
 });
 
+module.tooltipText = "You can quickly scroll through recently gained reputations by scrolling the mouse wheel while holding down shift key."
+
 module.recentReputations = {};
+module.hasCustomMouseCallback = true;
 
 local BODYGUARD_FACTIONS = {
 	[1738] = "Defender Illona",
@@ -43,6 +46,12 @@ function module:Initialize()
 	
 	local name = GetWatchedFactionInfo();
 	module.Tracked = name;
+	
+	if(name) then
+		module.recentReputations[name] = {
+			amount = 0;
+		};
+	end
 end
 
 function module:IsDisabled()
@@ -51,6 +60,48 @@ end
 
 function module:Update(elapsed)
 	
+end
+
+function module:GetSortedRecentList()
+	local sortedList = {};
+	for name, data in pairs(module.recentReputations) do
+		tinsert(sortedList, {name = name, data = data});
+	end
+	table.sort(sortedList, function(a, b)
+		if(a == nil and b == nil) then return false end
+		if(a == nil) then return true end
+		if(b == nil) then return false end
+		
+		return a.name < b.name;
+	end);
+	for index, data in ipairs(sortedList) do
+		module.recentReputations[data.name].sortedIndex = index;
+	end
+	return sortedList;
+end
+
+function module:OnMouseWheel(delta)
+	if(IsShiftKeyDown()) then
+		local recentRepsList = module:GetSortedRecentList();
+		if(not recentRepsList or #recentRepsList == 0) then return end
+		
+		local currentIndex = nil;
+		local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
+		if(name) then
+			currentIndex = module.recentReputations[name].sortedIndex;
+		else
+			currentIndex = 1;
+		end
+		
+		currentIndex = currentIndex - delta;
+		if(currentIndex > #recentRepsList) then currentIndex = 1 end
+		if(currentIndex < 1) then currentIndex = #recentRepsList end
+		
+		if(recentRepsList[currentIndex]) then
+			local factionIndex = module:GetReputationID(recentRepsList[currentIndex].name);
+			SetWatchedFactionIndex(factionIndex);
+		end
+	end
 end
 
 function module:CanLevelUp()
@@ -68,6 +119,7 @@ function module:GetText()
 	end
 	
 	local primaryText = {};
+	local secondaryText = {};
 	
 	local rep_text = {};
 	
@@ -130,14 +182,16 @@ function module:GetText()
 	end
 	
 	if(hasRewardPending) then
-		tinsert(primaryText, "|cff00ff00Paragon reward earned!|r");
+		tinsert(secondaryText, "|cff00ff00Paragon reward earned!|r");
 	end
 	
 	if(self.db.global.ShowGainedRep and module.recentReputations[name]) then
-		tinsert(primaryText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
+		if(module.recentReputations[name].amount > 0) then
+			tinsert(secondaryText, string.format("+%s |cffffcc00rep|r", BreakUpLargeNumbers(module.recentReputations[name].amount)));
+		end
 	end
 	
-	return table.concat(primaryText, "  ");
+	return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
 end
 
 function module:HasChatMessage()
@@ -364,10 +418,12 @@ function module:GetRecentReputationsMenu()
 			text = "Recent Reputations", isTitle = true, notCheckable = true,
 		},
 	};
-		
-	local recentReps = 0;
 	
-	for name, data in pairs(module.recentReputations) do
+	local recentRepsList = module:GetSortedRecentList();
+	for _, rep in ipairs(recentRepsList) do
+		local name = rep.name;
+		local data = rep.data;
+		
 		local faction_index = module:GetReputationID(name);
 		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(faction_index);
 		local friend_level = select(7, GetFriendshipReputation(factionID));
@@ -386,11 +442,9 @@ function module:GetRecentReputationsMenu()
 			func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
 			checked = function() return isWatched end,
 		})
-		
-		recentReps = recentReps + 1;
 	end
 	
-	if(recentReps == 0) then
+	if(#recentRepsList == 0) then
 		return false;
 	end
 	

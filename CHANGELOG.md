@@ -1,3 +1,8 @@
+## 2.3.0
+* You can now split Experiencer bar in up to three different sections allowing you to display more information at once.
+* Reputation module now supports scrolling recent reputations by holding down shift key and scrolling mouse wheel.
+* Added support for shared media fonts. You can now change fonts via frame options menu.
+
 ## 2.2.1
 * Fixed reputation module paragon reputations after reaching reward level.
 
