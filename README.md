@@ -2,7 +2,7 @@
 Experience bar replacement for World of Warcraft.
 
 ## Description
-Experiencer is a minimum configuration required experience bar addon. It adds multi purpose experience, reputation, artifact power and honor progress bar to the bottom or the top of the screen.
+Experiencer is a minimum configuration required experience bar addon. It adds multi purpose experience, reputation, artifact power and honor progress bar to the bottom or the top of the screen. The bar can also be split in up to three different sections to display multiple data sources simultaneously. 
 
 Note that because the Experiencer bar can **only be anchored to the top or the bottom of the screen** it may overlap with other frames positioned in those places.
 
@@ -16,16 +16,19 @@ If available Experiencer can also track artifact power and honor. Artifact power
 
 By default the bar is colored the class color of the character you are playing but it can be changed in the options.
 
-Experiencer also adds a DataBroker module that displays current text if you wish to place it elsewhere. To freely place it anywhere check out my DataBroker display addon [Candy](http://www.curse.com/addons/wow/candy).
+Experiencer also adds a DataBroker module that displays current text if you wish to place it elsewhere. To freely place it anywhere check out my DataBroker display addon [Candy](http://www.curse.com/addons/wow/candy). In case Experiencer is split in to more than one section the left most bar will be used as the data source for DataBroker text.
 
 ### Usage and Shortcuts
 
 Experiencer options can be accessed by right clicking the bar or the DataBroker module. In order to make things smoother there are a few useful shortcuts.
 
 * Control left-click toggles bar visiblity. There will always be a slightly translucent black bar where the bar is anchored.
-* Middle click toggles text visibility if text is not set to be always hidden.
+* Middle-click toggles text visibility if text is not set to be always hidden.
 * Holding control while scrolling with mouse wheel lets you browse through available bars in following order: experience, reputation, artifact power and honor.
 * Shift left-click pastes current statistics to chat editbox. Shift control left-click for quick paste.
+
+* **Reputation** Holding shift while scrolling with mouse wheel over reputation bar will cycle through recent reputations.
+* **Artifact** Shift middle-click will open the artifact talent menu if an artifact is equipped.
 
 ## Dependencies
 Experiencer uses Ace3, LibSharedMedia and LibDataBroker which are included in the /libs directory.

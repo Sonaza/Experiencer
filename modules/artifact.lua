@@ -30,6 +30,17 @@ module.hasCustomMouseCallback = true;
 function module:Initialize()
 	self:RegisterEvent("ARTIFACT_XP_UPDATE");
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
+	self:RegisterEvent("LOADING_SCREEN_ENABLED");
+	self:RegisterEvent("LOADING_SCREEN_DISABLED");
+end
+
+function module:LOADING_SCREEN_ENABLED()
+	self.inLoadingScreen = true;
+end
+
+function module:LOADING_SCREEN_DISABLED()
+	self.inLoadingScreen = false;
+	module:RefreshText();
 end
 
 function module:IsDisabled()
@@ -83,6 +94,7 @@ end
 
 function module:CalculateTotalArtifactPower()
 	if(not HasArtifactEquipped()) then return 0 end
+	if(self.inLoadingScreen) then return 0 end
 	
 	local _, _, _, _, currentXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
 	

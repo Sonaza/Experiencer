@@ -1,7 +1,10 @@
 ## 2.3.0
 * You can now split Experiencer bar in up to three different sections allowing you to display more information at once.
+  * DataBroker module will continue sourcing its text label from the leftmost bar.
 * Reputation module now supports scrolling recent reputations by holding down shift key and scrolling mouse wheel.
-* Added support for shared media fonts. You can now change fonts via frame options menu.
+* Added abbreviation for large number values for artifact bar. This is enabled by default but can optionally be disabled in artifact bar options.
+* Added support for shared media fonts and optional font scaling. You can now change font face and scale via frame options menu.
+* Attempted fix for hangs in loading screens due to artifact module.
 
 ## 2.2.1
 * Fixed reputation module paragon reputations after reaching reward level.

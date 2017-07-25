@@ -192,7 +192,7 @@ function module:GetText()
 		
 		if(not self.db.global.QuestXP.AddIncomplete) then
 			tinsert(secondaryText,
-				string.format("%s |cff80e916xp from completed quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), levelUpAlert)
+				string.format("%s |cff80e916xp from quests|r%s", BreakUpLargeNumbers(math.floor(completeXP)), levelUpAlert)
 			);
 		elseif(self.db.global.QuestXP.AddIncomplete) then
 			tinsert(secondaryText,
