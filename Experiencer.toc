@@ -2,7 +2,7 @@
 ## Title: Experiencer
 ## Notes: Simple and Advanced Experience and Reputation Progress Bar
 ## Author: Sonaza
-## Version: 2.3.0
+## Version: 2.3.1
 ## OptionalDeps: Ace3
 ## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor
 

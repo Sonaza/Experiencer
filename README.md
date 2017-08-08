@@ -27,8 +27,9 @@ Experiencer options can be accessed by right clicking the bar or the DataBroker 
 * Holding control while scrolling with mouse wheel lets you browse through available bars in following order: experience, reputation, artifact power and honor.
 * Shift left-click pastes current statistics to chat editbox. Shift control left-click for quick paste.
 
-* **Reputation** Holding shift while scrolling with mouse wheel over reputation bar will cycle through recent reputations.
-* **Artifact** Shift middle-click will open the artifact talent menu if an artifact is equipped.
+* **Reputation:** Holding shift while scrolling with mouse wheel over reputation bar will cycle through recent reputations.
+* **Artifact:** Shift middle-click will open the artifact talent menu if an artifact is equipped.
+* **Honor:** Shift middle-click will toggle honor talents frame or [FlashTalent](http://wow.curseforge.com/addons/flashtalent/) (another one of my addons) honor talent window if it is installed.
 
 ## Dependencies
 Experiencer uses Ace3, LibSharedMedia and LibDataBroker which are included in the /libs directory.

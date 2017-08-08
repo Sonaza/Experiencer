@@ -32,6 +32,8 @@ function module:Initialize()
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	self:RegisterEvent("LOADING_SCREEN_ENABLED");
 	self:RegisterEvent("LOADING_SCREEN_DISABLED");
+	self.inLoadingScreen = true;
+	self.scheduledPowerUpdateTimer = 2;
 end
 
 function module:LOADING_SCREEN_ENABLED()
@@ -39,8 +41,7 @@ function module:LOADING_SCREEN_ENABLED()
 end
 
 function module:LOADING_SCREEN_DISABLED()
-	self.inLoadingScreen = false;
-	module:RefreshText();
+	self.scheduledPowerUpdateTimer = 2;
 end
 
 function module:IsDisabled()
@@ -49,7 +50,14 @@ function module:IsDisabled()
 end
 
 function module:Update(elapsed)
-	
+	if(self.scheduledPowerUpdateTimer) then
+		self.scheduledPowerUpdateTimer = self.scheduledPowerUpdateTimer - elapsed;
+		if(self.scheduledPowerUpdateTimer <= 0) then
+			self.inLoadingScreen = false;
+			module:RefreshText();
+			self.scheduledPowerUpdateTimer = nil;
+		end
+	end
 end
 
 function module:OnMouseDown(button)
@@ -94,7 +102,6 @@ end
 
 function module:CalculateTotalArtifactPower()
 	if(not HasArtifactEquipped()) then return 0 end
-	if(self.inLoadingScreen) then return 0 end
 	
 	local _, _, _, _, currentXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
 	
@@ -341,6 +348,8 @@ local APStringValueMillionLocal = APStringValueMillion[GetLocale()];
 local APValueMultiplierLocal = (APValueMultiplier[GetLocale()] or 1e6);
 
 function module:FindPowerItemsInInventory()
+	if(self.inLoadingScreen) then return 0, 0 end
+	
 	local powers = {};
 	local totalPower = 0;
 	
@@ -369,6 +378,7 @@ end
 
 function module:GetItemArtifactPower(link)
 	if(not link) then return nil end
+	if(self.inLoadingScreen) then return nil end
 	
 	ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
 	ExperiencerAPScannerTooltip:SetHyperlink(link);

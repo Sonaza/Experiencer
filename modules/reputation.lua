@@ -451,34 +451,78 @@ function module:GetRecentReputationsMenu()
 	return factions;
 end
 
+function module:GetReputationProgressByFactionID(factionID)
+	if(not factionID) then return nil end
+	
+	local name, _, standing, minReputation, maxReputation, currentReputation = GetFactionInfoByID(factionID);
+	if(not name or not minReputation or not maxReputation) then return nil end
+	
+	local isCapped = false;
+	local isParagon = false;
+	
+	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	if(friendLevel) then
+		if(not nextFriendThreshold) then
+			isCapped = true;
+		end
+	else
+		if(standing == MAX_REPUTATION_REACTION) then
+			if(C_Reputation.IsFactionParagon(factionID)) then
+				currentReputation, maxReputation = C_Reputation.GetFactionParagonInfo(factionID);
+				minReputation = 0;
+				
+				if(currentReputation >= maxReputation) then
+					isParagon = true;
+				end
+				
+				currentReputation = currentReputation % maxReputation;
+			else
+				isCapped = true;
+			end
+		end
+	end
+	
+	return currentReputation - minReputation, maxReputation - minReputation, isCapped, isParagon;
+end
+
 function module:GetReputationsMenu()
 	local factions = {};
 	
 	local previous, current = nil, nil;
 	local depth = 0;
 	
-	local numFactions = GetNumFactions();
-	for index = 1, numFactions do
-		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(index);
+	local factionIndex = 1;
+	while factionIndex <= GetNumFactions() do
+		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(factionIndex);
 		if(name) then
-			local friend_level = select(7, GetFriendshipReputation(factionID));
-			local standing_text = "";
-			local faction_index = index;
+			local progressText = "";
+			if(factionID) then
+				local currentRep, nextThreshold, isCapped, isParagon = module:GetReputationProgressByFactionID(factionID);
+				if(isParagon) then
+					standing = standing + 1;
+				end
+				
+				if(currentRep and not isCapped) then
+					progressText = string.format("  (|cfffff2ab%s|r / %s)", BreakUpLargeNumbers(currentRep), BreakUpLargeNumbers(nextThreshold));
+				end
+			end
+				
+			local friendLevel = select(7, GetFriendshipReputation(factionID));
+			local standingText = "";
 			
 			if(not isHeader or hasRep) then
-				if(friend_level) then
-					standing_text = friend_level;
+				if(friendLevel) then
+					standingText = friendLevel;
 				else
-					standing_text = module:GetStandingColorText(standing)
+					standingText = module:GetStandingColorText(standing);
 				end
 			end
 			
 			if(isHeader and isCollapsed) then
-				ExpandFactionHeader(index);
-				numFactions = GetNumFactions();
+				ExpandFactionHeader(factionIndex);
 			end
 			
-			if(isHeader and isChild) then -- Second tier header
+			if(isHeader and isChild and current) then -- Second tier header
 				if(depth == 2) then
 					current = previous;
 					previous = nil;
@@ -493,9 +537,9 @@ function module:GetReputationsMenu()
 					})
 				else
 					tinsert(current, {
-						text = string.format("%s (%s)", name, standing_text),
+						text = string.format("%s (%s)%s", name, standingText, progressText),
 						hasArrow = true,
-						func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+						func = function() SetWatchedFactionIndex(factionIndex); CloseMenus(); end,
 						checked = function() return isWatched; end,
 						menuList = {},
 					})
@@ -529,12 +573,14 @@ function module:GetReputationsMenu()
 				depth = 1
 			elseif(not isHeader) then -- First and second tier faction
 				tinsert(current, {
-					text = string.format("%s (%s)", name, standing_text),
-					func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+					text = string.format("%s (%s)%s", name, standingText, progressText),
+					func = function() SetWatchedFactionIndex(factionIndex); CloseMenus(); end,
 					checked = function() return isWatched end,
 				})
 			end
 		end
+		
+		factionIndex = factionIndex + 1;
 	end
 	
 	local recent = module:GetRecentReputationsMenu();

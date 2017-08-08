@@ -1,3 +1,9 @@
+## 2.3.1
+* Added a new keybind for honor bar: Shift middle-click will now toggle honor talents frame or FlashTalent (separate addon) honor talent window if it is installed.
+* Fixed artifact module causing hangs in loading screen. This time it should work (famous last words).
+* Fixed reputation options menu generation on characters with unusual API response.
+* Added current reputation values to reputation menu.
+
 ## 2.3.0
 * You can now split Experiencer bar in up to three different sections allowing you to display more information at once.
   * DataBroker module will continue sourcing its text label from the leftmost bar.
@@ -10,7 +16,7 @@
 * Fixed reputation module paragon reputations after reaching reward level.
 
 ## 2.2.0
-* Added new keybind for artifact bar: Shift + Middle Mouse will now open artifact talent window while artifact module is active.
+* Added new keybind for artifact bar: Shift middle-click will now open artifact talent window while artifact module is active.
 * Reputation module now supports paragon reputations.
 * Fixed weird bar animations.
 

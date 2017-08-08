@@ -19,6 +19,7 @@ local module = Addon:RegisterModule("honor", {
 });
 
 module.levelUpRequiresAction = true;
+module.hasCustomMouseCallback = true;
 
 local HONOR_UNLOCK_LEVEL = 110;
 
@@ -34,6 +35,27 @@ end
 
 function module:Update(elapsed)
 	
+end
+
+function module:OnMouseDown(button)
+	if(InCombatLockdown()) then return end
+	if(button == "MiddleButton" and IsShiftKeyDown()) then
+		if(FlashTalent) then
+			FlashTalent:ToggleFrame(2);
+		else
+			if(not IsAddOnLoaded("Blizzard_TalentUI")) then
+				LoadAddOn("Blizzard_TalentUI");
+			end
+			
+			if(not PlayerTalentFrame:IsVisible()) then
+				ShowUIPanel(PlayerTalentFrame);
+				PlayerTalentTab_OnClick(_G["PlayerTalentFrameTab" .. PVP_TALENTS_TAB]);
+			else
+				HideUIPanel(PlayerTalentFrame);
+			end
+		end
+		return true;
+	end
 end
 
 function module:CanLevelUp()
