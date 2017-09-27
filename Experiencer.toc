@@ -1,8 +1,8 @@
-## Interface: 70200
+## Interface: 70300
 ## Title: Experiencer
 ## Notes: Simple and Advanced Experience and Reputation Progress Bar
 ## Author: Sonaza
-## Version: 2.3.1
+## Version: 2.4.0
 ## OptionalDeps: Ace3
 ## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor
 

@@ -646,6 +646,16 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	
 	if(not reputation or not module.recentReputations) then return end
 	
+	local isGuild = false;
+	if(reputation == GUILD) then
+		isGuild = true;
+		
+		local guildName = GetGuildInfo("player");
+		if(guildName) then
+			reputation = guildName;
+		end
+	end
+	
 	if(not module.recentReputations[reputation]) then
 		module.recentReputations[reputation] = {
 			amount = 0,
@@ -657,13 +667,13 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	if(self.db.global.AutoWatch.Enabled) then
 		local name = GetWatchedFactionInfo();
 		if(name ~= reputation) then
-			module:UpdateAutoWatch(reputation);
+			module:UpdateAutoWatch(reputation, isGuild);
 		end
 	end
 end
 
-function module:UpdateAutoWatch(reputation)
-	if(self.db.global.AutoWatch.IgnoreGuild and reputation == GUILD) then return end
+function module:UpdateAutoWatch(reputation, isGuild)
+	if(self.db.global.AutoWatch.IgnoreGuild and isGuild) then return end
 		
 	local factionListIndex, factionID = module:GetReputationID(reputation);
 	if(not factionListIndex) then return end

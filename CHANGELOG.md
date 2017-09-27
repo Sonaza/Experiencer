@@ -1,3 +1,8 @@
+## 2.4.0
+* TOC bump for patch 7.3.0.
+* Updated artifact module to support tallying Artifact Power tokens that reward billions of AP. Support is lacking for Spanish and Russian localizations (and the rest are Google translated and may be incorrect anyway).
+* Fixed guild reputation name in recent reputations list.
+
 ## 2.3.1
 * Added a new keybind for honor bar: Shift middle-click will now toggle honor talents frame or FlashTalent (separate addon) honor talent window if it is installed.
 * Fixed artifact module causing hangs in loading screen. This time it should work (famous last words).

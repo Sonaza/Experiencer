@@ -324,28 +324,65 @@ local EMPOWERING_SPELL_ID = 227907;
 
 local ExperiencerAPScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
 
-local APStringValueMillion = {
-	["enUS"] = "(%d*[%p%s]?%d+) million",
-	["enGB"] = "(%d*[%p%s]?%d+) million",
-	["ptBR"] = "(%d*[%p%s]?%d+) [[milhão][milhões]]?",
-	["esMX"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
-	["deDE"] = "(%d*[%p%s]?%d+) [[Million][Millionen]]?",
-	["esES"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
-	["frFR"] = "(%d*[%p%s]?%d+) [[million][millions]]?",
-	["itIT"] = "(%d*[%p%s]?%d+) [[milione][milioni]]?",
-	["ruRU"] = "(%d*[%p%s]?%d+) млн",
-	["koKR"] = "(%d*[%p%s]?%d+)만",
-	["zhTW"] = "(%d*[%p%s]?%d+)萬",
-	["zhCN"] = "(%d*[%p%s]?%d+) 万",
+local apStringValues = {
+	["enUS"] = {
+		"(%d*[%p%s]?%d+) million",
+		"(%d*[%p%s]?%d+) billion" 
+	},
+	["enGB"] = {
+		"(%d*[%p%s]?%d+) million",
+		"(%d*[%p%s]?%d+) billion" 
+	},
+	["ptBR"] = {
+		"(%d*[%p%s]?%d+) [[milhão][milhões]]?",
+		"(%d*[%p%s]?%d+) [[bilhão][bilhões]]?"
+	},
+	["esMX"] = {
+		"(%d*[%p%s]?%d+) [[millón][millones]]?",
+		"(%d*[%p%s]?%d+) [[billón][billones]]?" -- TODO
+	},
+	["deDE"] = {
+		"(%d*[%p%s]?%d+) [[Million][Millionen]]?",
+		"(%d*[%p%s]?%d+) [[Milliarde][Milliarden]]?"
+	},
+	["esES"] = {
+		"(%d*[%p%s]?%d+) [[millón][millones]]?",
+		"(%d*[%p%s]?%d+) [[billón][billones]]?" -- TODO
+	},
+	["frFR"] = {
+		"(%d*[%p%s]?%d+) [[million][millions]]?",
+		"(%d*[%p%s]?%d+) [[milliard][milliards]]?"
+	},
+	["itIT"] = {
+		"(%d*[%p%s]?%d+) [[milione][milioni]]?",
+		"(%d*[%p%s]?%d+) [[miliardo][miliardi]]?"
+	},
+	["ruRU"] = {
+		"(%d*[%p%s]?%d+) млн",
+		"(%d*[%p%s]?%d+) млн" -- TODO
+	},
+	["koKR"] = {
+		"(%d*[%p%s]?%d+)만",
+		"(%d*[%p%s]?%d+)억"
+	},
+	["zhTW"] = {
+		"(%d*[%p%s]?%d+)萬",
+		"(%d*[%p%s]?%d+)億"
+	},
+	["zhCN"] = {
+		"(%d*[%p%s]?%d+) 万",
+		"(%d*[%p%s]?%d+) 亿"
+	},
 };
-local APValueMultiplier = {
-	["koKR"] = 1e4,
-	["zhTW"] = 1e4,
-	["zhCN"] = 1e4,
+local apValueMultipliers = {
+	["default"] = { 1e6, 1e9 },
+	["koKR"]    = { 1e4, 1e8 },
+	["zhTW"]    = { 1e4, 1e8 },
+	["zhCN"]    = { 1e4, 1e8 },
 };
 
-local APStringValueMillionLocal = APStringValueMillion[GetLocale()];
-local APValueMultiplierLocal = (APValueMultiplier[GetLocale()] or 1e6);
+local apStringValuesLocal = apStringValues[GetLocale()];
+local apValueMultiplierLocal = (apValueMultipliers[GetLocale()] or apValueMultipliers["default"]);
 
 function module:FindPowerItemsInInventory()
 	if(self.inLoadingScreen) then return 0, 0 end
@@ -376,6 +413,16 @@ function module:FindPowerItemsInInventory()
 	return totalPower, powers;
 end
 
+function module:StringMatchMultipleValues(str, values)
+	for index, pattern in ipairs(values) do
+		local value = strmatch(str, pattern);
+		if(value) then
+			return value, index;
+		end
+	end
+	return nil;
+end
+
 function module:GetItemArtifactPower(link)
 	if(not link) then return nil end
 	if(self.inLoadingScreen) then return nil end
@@ -387,14 +434,16 @@ function module:GetItemArtifactPower(link)
 	if(not tooltipText) then return nil end
 	
 	local digit1, digit2, digit3, power;
-	local value = strmatch(tooltipText, APStringValueMillionLocal);
+	local value, multiplierIndex = module:StringMatchMultipleValues(tooltipText, apStringValuesLocal);
 
-	if (value) then
+	if (value and multiplierIndex) then
+		local multiplier = apValueMultiplierLocal[multiplierIndex];
+		
 		digit1, digit2 = strmatch(value, "(%d+)[%p%s](%d+)");
 		if (digit1 and digit2) then
-			power = tonumber(format("%s.%s", digit1, digit2)) * APValueMultiplierLocal; 
+			power = tonumber(format("%s.%s", digit1, digit2)) * multiplier; 
 		else
-			power = tonumber(value) * APValueMultiplierLocal; 
+			power = tonumber(value) * multiplier; 
 		end 
 	else
 		digit1, digit2, digit3 = strmatch(tooltipText,"(%d+)[%p%s]?(%d+)[%p%s]?(%d*)");
