@@ -1,3 +1,6 @@
+## 2.4.1
+* Fixed artifact module text with overloaded artifacts.
+
 ## 2.4.0
 * TOC bump for patch 7.3.0.
 * Updated artifact module to support tallying Artifact Power tokens that reward billions of AP. Support is lacking for Spanish and Russian localizations (and the rest are Google translated and may be incorrect anyway).

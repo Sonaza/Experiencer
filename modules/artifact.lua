@@ -138,9 +138,18 @@ function module:GetText()
 	local progress          = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
 	local progressColor     = Addon:GetProgressColor(progress);
 	
+	local currentPoints = pointsSpent + numPoints;
+	
 	tinsert(primaryText,
-		("|cffffecB3%s|r (Rank %d):"):format(name, pointsSpent + numPoints)
+		("|cffffecB3%s|r (Rank %d):"):format(name, currentPoints)
 	);
+	
+	if(currentPoints >= 126) then
+		tinsert(primaryText,
+			"|cff00ff00Overloaded!|r"
+		);
+		return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
+	end
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(primaryText,
@@ -189,24 +198,28 @@ function module:GetChatMessage()
 	local remaining = xpForNextPoint - artifactXP;
 	local progress  = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
 	
+	local currentPoints = pointsSpent + numPoints;
+	
 	tinsert(outputText, ("%s is currently rank %s"):format(
 		name,
-		pointsSpent + numPoints
+		currentPoints
 	));
 	
-	if(pointsSpent > 0) then
-		tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
-			module:FormatNumber(artifactXP),	
-			module:FormatNumber(xpForNextPoint),
-			progress * 100,
-			module:FormatNumber(remaining)
-		));
-	end
-	
-	if(self.db.global.UnspentInChatMessage and numPoints > 0) then
-		tinsert(outputText,
-			(" (%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
-		);
+	if(currentPoints < 126) then
+		if(pointsSpent > 0) then
+			tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
+				module:FormatNumber(artifactXP),	
+				module:FormatNumber(xpForNextPoint),
+				progress * 100,
+				module:FormatNumber(remaining)
+			));
+		end
+		
+		if(self.db.global.UnspentInChatMessage and numPoints > 0) then
+			tinsert(outputText,
+				(" (%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
+			);
+		end
 	end
 	
 	return table.concat(outputText, " ");
@@ -229,12 +242,18 @@ function module:GetBarData()
 		data.id       = itemID;
 	
 		data.level    = pointsSpent + numPoints or 0;
-		data.max  	  = xpForNextPoint;
-		data.current  = artifactXP;
 		
-		if(self.db.global.VisualizeBagArtifactPower) then
-			local totalPower = module:FindPowerItemsInInventory();
-			data.visual = totalPower;
+		if(data.level < 126) then
+			data.max  	  = xpForNextPoint;
+			data.current  = artifactXP;
+			
+			if(self.db.global.VisualizeBagArtifactPower) then
+				local totalPower = module:FindPowerItemsInInventory();
+				data.visual = totalPower;
+			end
+		else
+			data.max = 1
+			data.current = 1
 		end
 	end
 	
