@@ -19,14 +19,13 @@ local module = Addon:RegisterModule("honor", {
 });
 
 module.levelUpRequiresAction = true;
-module.hasCustomMouseCallback = true;
+module.hasCustomMouseCallback = false;
 
 local HONOR_UNLOCK_LEVEL = 110;
 
 function module:Initialize()
 	self:RegisterEvent("HONOR_XP_UPDATE");
 	self:RegisterEvent("HONOR_LEVEL_UPDATE");
-	self:RegisterEvent("HONOR_PRESTIGE_UPDATE");
 end
 
 function module:IsDisabled()
@@ -38,42 +37,19 @@ function module:Update(elapsed)
 end
 
 function module:OnMouseDown(button)
-	if(InCombatLockdown()) then return end
-	if(button == "MiddleButton" and IsShiftKeyDown()) then
-		if(FlashTalent) then
-			FlashTalent:ToggleFrame(2);
-		else
-			if(not IsAddOnLoaded("Blizzard_TalentUI")) then
-				LoadAddOn("Blizzard_TalentUI");
-			end
-			
-			if(not PlayerTalentFrame:IsVisible()) then
-				ShowUIPanel(PlayerTalentFrame);
-				PlayerTalentTab_OnClick(_G["PlayerTalentFrameTab" .. PVP_TALENTS_TAB]);
-			else
-				HideUIPanel(PlayerTalentFrame);
-			end
-		end
-		return true;
-	end
+	
 end
 
 function module:CanLevelUp()
-	return CanPrestige();
+	return false;
 end
 
 function module:GetText()
 	local primaryText = {};
 	
 	local honorlevel 	    = UnitHonorLevel("player");
-	local prestige          = UnitPrestige("player");
 	local honor, honormax   = UnitHonor("player"), UnitHonorMax("player");
 	local remaining         = honormax - honor;
-	
-	local exhaustionThreshold = GetHonorExhaustion() or 0;
-	local exhaustionStateID, exhaustionStateName, exhaustionStateMultiplier = GetHonorRestState();
-	
-	local restedPercentage  = math.ceil(exhaustionThreshold / honormax * 100);
 	
 	local progress          = honor / (honormax > 0 and honormax or 1);
 	local progressColor     = Addon:GetProgressColor(progress);
@@ -81,12 +57,6 @@ function module:GetText()
 	if(self.db.global.ShowHonorLevel) then
 		tinsert(primaryText, 
 			("|cffffd200Honor Level|r %d"):format(honorlevel)
-		);
-	end
-	
-	if(self.db.global.ShowPrestige and prestige > 0) then
-		tinsert(primaryText, 
-			("|cffffd200Prestige|r %d"):format(prestige)
 		);
 	end
 	
@@ -100,21 +70,6 @@ function module:GetText()
 		);
 	end
 	
-	if(exhaustionThreshold > 0) then
-		tinsert(primaryText,
-			string.format("%d%% |cff6fafdfrested|r", restedPercentage)
-		);
-		tinsert(primaryText,
-			string.format("%d%% |cff6fafdfmultiplier|r", exhaustionStateMultiplier * 100)
-		);
-	end
-	
-	if(CanPrestige()) then
-		tinsert(primaryText, 
-			"|cff86ff36Can prestige!|r"
-		);
-	end
-	
 	return table.concat(primaryText, "  "), nil;
 end
 
@@ -124,20 +79,12 @@ end
 
 function module:GetChatMessage()
 	local level 	        = UnitHonorLevel("player");
-	local prestige          = UnitPrestige("player");
 	local honor, honormax   = UnitHonor("player"), UnitHonorMax("player");
 	local remaining         = honormax - honor;
 	
-	local exhaustionThreshold = GetHonorExhaustion() or 0;
-	local exhaustionStateID, exhaustionStateName, exhaustionStateMultiplier = GetHonorRestState();
-	
 	local progress          = honor / (honormax > 0 and honormax or 1);
 	
-	local leveltext = ("Currently honor rank %d"):format(level);
-	
-	if(prestige > 0) then
-		leveltext = ("%s (%d prestige)"):format(leveltext, prestige);
-	end
+	local leveltext = ("Currently honor level %d"):format(level);
 	
 	return ("%s at %s/%s (%d%%) with %s to go"):format(
 		leveltext,
@@ -150,13 +97,8 @@ end
 
 function module:GetBarData()
 	local level 	        = UnitHonorLevel("player");
-    local levelmax          = GetMaxPlayerHonorLevel();
-    
 	local honor, honormax   = UnitHonor("player"), UnitHonorMax("player");
 	local remaining         = honormax - honor;
-	
-	local exhaustionThreshold = GetHonorExhaustion() or 0;
-	local exhaustionStateID, exhaustionStateName, exhaustionStateMultiplier = GetHonorRestState();
 	
 	local progress          = honor / (honormax > 0 and honormax or 1);
 	local progressColor     = Addon:GetProgressColor(progress);
@@ -165,17 +107,10 @@ function module:GetBarData()
 	data.id       = nil;
 	data.level    = level;
 	
-	if(level ~= levelmax) then
-		data.min  	  = 0;
-		data.max  	  = honormax;
-		data.current  = honor;
-	else
-		data.min  	  = 0;
-		data.max  	  = 1;
-		data.current  = 1;
-	end
+	data.min  	  = 0;
+	data.max  	  = honormax;
+	data.current  = honor;
 	
-	data.rested   = exhaustionThreshold;
 	data.visual   = nil;
 	
 	return data;
@@ -207,12 +142,6 @@ function module:GetOptionsMenu()
 			checked = function() return self.db.global.ShowHonorLevel; end,
 			isNotRadio = true,
 		},
-		{
-			text = "Show prestige level",
-			func = function() self.db.global.ShowPrestige = not self.db.global.ShowPrestige; module:RefreshText(); end,
-			checked = function() return self.db.global.ShowPrestige; end,
-			isNotRadio = true,
-		},
 	};
 	
 	return menudata;
@@ -225,9 +154,5 @@ function module:HONOR_XP_UPDATE()
 end
 
 function module:HONOR_LEVEL_UPDATE()
-	module:Refresh();
-end
-
-function module:HONOR_PRESTIGE_UPDATE()
 	module:Refresh();
 end

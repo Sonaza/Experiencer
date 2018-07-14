@@ -12,144 +12,64 @@ local module = Addon:RegisterModule("artifact", {
 	savedvars   = {
 		global = {
 			ShowRemaining = true,
-			ShowUnspentPoints = true,
-			ShowTotalArtifactPower = false,
-			UnspentInChatMessage = false,
-			ShowBagArtifactPower = true,
-			VisualizeBagArtifactPower = true,
 			AbbreviateLargeValues = true,
 		},
 	},
 });
 
-module.tooltipText = "You can open artifact talent menu by shift middle clicking."
-
 module.levelUpRequiresAction = true;
-module.hasCustomMouseCallback = true;
+module.hasCustomMouseCallback = false;
 
 function module:Initialize()
-	self:RegisterEvent("ARTIFACT_XP_UPDATE");
-	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
-	self:RegisterEvent("LOADING_SCREEN_ENABLED");
-	self:RegisterEvent("LOADING_SCREEN_DISABLED");
-	self.inLoadingScreen = true;
-	self.scheduledPowerUpdateTimer = 2;
-end
-
-function module:LOADING_SCREEN_ENABLED()
-	self.inLoadingScreen = true;
-end
-
-function module:LOADING_SCREEN_DISABLED()
-	self.scheduledPowerUpdateTimer = 2;
+	self:RegisterEvent("AZERITE_ITEM_EXPERIENCE_CHANGED");
 end
 
 function module:IsDisabled()
-	-- If player doesn't have Legion on their account or hasn't completed first quest of artifact chain
-	return GetExpansionLevel() < 6 or not module:HasCompletedArtifactIntro();
+	return not C_AzeriteItem.HasActiveAzeriteItem()
 end
 
 function module:Update(elapsed)
-	if(self.scheduledPowerUpdateTimer) then
-		self.scheduledPowerUpdateTimer = self.scheduledPowerUpdateTimer - elapsed;
-		if(self.scheduledPowerUpdateTimer <= 0) then
-			self.inLoadingScreen = false;
-			module:RefreshText();
-			self.scheduledPowerUpdateTimer = nil;
-		end
-	end
-end
-
-function module:OnMouseDown(button)
-	if(button == "MiddleButton" and IsShiftKeyDown()) then
-		if(HasArtifactEquipped()) then
-			SocketInventoryItem(INVSLOT_MAINHAND);
-			return true;
-		end
-	end
+	
 end
 
 function module:CanLevelUp()
-	if(not HasArtifactEquipped()) then return false end
-	
-	local _, _, _, _, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, xp, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
-	return numPoints > 0;
-end
-
-function module:HasCompletedArtifactIntro()
-	local quests = {
-		40408, -- Paladin
-		40579, -- Warrior
-		40618, -- Hunter
-		40636, -- Monk
-		40646, -- Druid
-		40684, -- Warlock
-		40706, -- Priest
-		40715, -- Death Knight
-		40814, -- Demon Hunter
-		40840, -- Rogue
-		41085, -- Mage
-		41335, -- Shaman
-	};
-	
-	for _, questID in ipairs(quests) do
-		if(IsQuestFlaggedCompleted(questID)) then return true end
-	end
-	
 	return false;
 end
 
-function module:CalculateTotalArtifactPower()
-	if(not HasArtifactEquipped()) then return 0 end
-	
-	local _, _, _, _, currentXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
-	
-	local totalXP = 0;
-	
-	for i=0, pointsSpent-1 do
-		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(i, 0, artifactTier);
-		totalXP = totalXP + xpForNextPoint;
-	end
-	
-	return totalXP + currentXP;
-end
-
 function module:FormatNumber(value)
+	assert(value ~= nil);
 	if(self.db.global.AbbreviateLargeValues) then
 		return Addon:FormatNumberFancy(value);
 	end
 	return BreakUpLargeNumbers(value);
 end
 
+function module:GetArtifactName()
+	local azeriteItemLocation = C_AzeriteItem.FindActiveAzeriteItem(); 
+	if (not azeriteItemLocation) then
+		return "Azerite Artifact";
+	end
+	local itemID = GetInventoryItemID("player", azeriteItemLocation.equipmentSlotIndex);
+	local name = GetItemInfo(itemID);
+	return name;
+end
+
 function module:GetText()
-	if(not HasArtifactEquipped()) then
-		return "No artifact equipped";
+	if(not C_AzeriteItem.HasActiveAzeriteItem()) then
+		return "No artifact";
 	end
 	
 	local primaryText = {};
-	local secondaryText = {};
 	
-	local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
-	
-	local remaining         = xpForNextPoint - artifactXP;
-	
-	local progress          = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
+	local data = self:GetBarData();
+	local remaining         = data.max - data.current;
+	local progress          = data.current / data.max;
 	local progressColor     = Addon:GetProgressColor(progress);
-	
-	local currentPoints = pointsSpent + numPoints;
+	local name = module:GetArtifactName();
 	
 	tinsert(primaryText,
-		("|cffffecB3%s|r (Rank %d):"):format(name, currentPoints)
+		("|cffffecB3%s|r (Level %d):"):format(name, data.level)
 	);
-	
-	if(currentPoints >= 126) then
-		tinsert(primaryText,
-			"|cff00ff00Overloaded!|r"
-		);
-		return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
-	end
 	
 	if(self.db.global.ShowRemaining) then
 		tinsert(primaryText,
@@ -157,70 +77,35 @@ function module:GetText()
 		);
 	else
 		tinsert(primaryText,
-			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, module:FormatNumber(artifactXP), module:FormatNumber(xpForNextPoint), progressColor, progress * 100)
+			("%s%s|r / %s (%s%.1f|r%%)"):format(progressColor, module:FormatNumber(data.current), module:FormatNumber(data.max), progressColor, progress * 100)
 		);
 	end
 	
-	if(self.db.global.ShowTotalArtifactPower) then
-		tinsert(secondaryText,
-			("%s |cffffdd00total artifact power|r"):format(module:FormatNumber(module:CalculateTotalArtifactPower()))
-		);
-	end
-	
-	if(self.db.global.ShowBagArtifactPower) then
-		local totalPower = module:FindPowerItemsInInventory();
-		if(totalPower and totalPower > 0) then
-			tinsert(secondaryText,
-				("%s |cffa8ff00artifact power in bags|r"):format(module:FormatNumber(totalPower))
-			);
-		end
-	end
-	
-	if(self.db.global.ShowUnspentPoints and numPoints > 0) then
-		tinsert(secondaryText,
-			("|cff86ff33%d unspent point%s|r"):format(numPoints, numPoints == 1 and "" or "s")
-		);
-	end
-	
-	return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
+	return table.concat(primaryText, "  "), nil;
 end
 
 function module:HasChatMessage()
-	return HasArtifactEquipped(), "No artifact equipped.";
+	return C_AzeriteItem.HasActiveAzeriteItem(), "No artifact.";
 end
 
 function module:GetChatMessage()
 	local outputText = {};
 	
-	local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
-	local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
+	local data = self:GetBarData();
+	local remaining  = data.max - data.current;
+	local progress   = data.current / data.max;
+	local name       = module:GetArtifactName();
 	
-	local remaining = xpForNextPoint - artifactXP;
-	local progress  = artifactXP / (xpForNextPoint > 0 and xpForNextPoint or 1);
-	
-	local currentPoints = pointsSpent + numPoints;
-	
-	tinsert(outputText, ("%s is currently rank %s"):format(
-		name,
-		currentPoints
+	tinsert(outputText, ("%s is currently level %s"):format(
+		name, data.level
 	));
 	
-	if(currentPoints < 126) then
-		if(pointsSpent > 0) then
-			tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
-				module:FormatNumber(artifactXP),	
-				module:FormatNumber(xpForNextPoint),
-				progress * 100,
-				module:FormatNumber(remaining)
-			));
-		end
-		
-		if(self.db.global.UnspentInChatMessage and numPoints > 0) then
-			tinsert(outputText,
-				(" (%d unspent point%s)"):format(numPoints, numPoints == 1 and "" or "s")
-			);
-		end
-	end
+	tinsert(outputText, ("at %s/%s power (%.1f%%) with %s to go"):format(
+		module:FormatNumber(data.current),	
+		module:FormatNumber(data.max),
+		progress * 100,
+		module:FormatNumber(remaining)
+	));
 	
 	return table.concat(outputText, " ");
 end
@@ -235,26 +120,16 @@ function module:GetBarData()
 	data.rested   = nil;
 	data.visual   = nil;
 	
-	if(HasArtifactEquipped()) then
-		local itemID, altItemID, name, icon, totalXP, pointsSpent, _, _, _, _, _, _, artifactTier = C_ArtifactUI.GetEquippedArtifactInfo();
-		local numPoints, artifactXP, xpForNextPoint = MainMenuBar_GetNumArtifactTraitsPurchasableFromXP(pointsSpent, totalXP, artifactTier);
+	local azeriteItemLocation = C_AzeriteItem.FindActiveAzeriteItem();
+	if(C_AzeriteItem.HasActiveAzeriteItem() and azeriteItemLocation) then
+		local currentXP, totalLevelXP = C_AzeriteItem.GetAzeriteItemXPInfo(azeriteItemLocation);
+		local currentLevel = C_AzeriteItem.GetPowerLevel(azeriteItemLocation); 
 		
-		data.id       = itemID;
-	
-		data.level    = pointsSpent + numPoints or 0;
+		data.id       = 1;
+		data.level    = currentLevel;
 		
-		if(data.level < 126) then
-			data.max  	  = xpForNextPoint;
-			data.current  = artifactXP;
-			
-			if(self.db.global.VisualizeBagArtifactPower) then
-				local totalPower = module:FindPowerItemsInInventory();
-				data.visual = totalPower;
-			end
-		else
-			data.max = 1
-			data.current = 1
-		end
+		data.current  = currentXP;
+		data.max  	  = totalLevelXP;
 	end
 	
 	return data;
@@ -281,39 +156,6 @@ function module:GetOptionsMenu()
 			text = " ", isTitle = true, notCheckable = true,
 		},
 		{
-			text = "Show total artifact power",
-			func = function() self.db.global.ShowTotalArtifactPower = not self.db.global.ShowTotalArtifactPower; module:RefreshText(); end,
-			checked = function() return self.db.global.ShowTotalArtifactPower; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show unspent points",
-			func = function() self.db.global.ShowUnspentPoints = not self.db.global.ShowUnspentPoints; module:RefreshText(); end,
-			checked = function() return self.db.global.ShowUnspentPoints; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Include unspent points in chat message",
-			func = function() self.db.global.UnspentInChatMessage = not self.db.global.UnspentInChatMessage; module:RefreshText(); end,
-			checked = function() return self.db.global.UnspentInChatMessage; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Show unspent artifact power in bags",
-			func = function() self.db.global.ShowBagArtifactPower = not self.db.global.ShowBagArtifactPower; module:RefreshText(); end,
-			checked = function() return self.db.global.ShowBagArtifactPower; end,
-			isNotRadio = true,
-		},
-		{
-			text = "Visualize unspent artifact power in bags",
-			func = function() self.db.global.VisualizeBagArtifactPower = not self.db.global.VisualizeBagArtifactPower; module:RefreshText(); end,
-			checked = function() return self.db.global.VisualizeBagArtifactPower; end,
-			isNotRadio = true,
-		},
-		{
-			text = " ", isTitle = true, notCheckable = true,
-		},
-		{
 			text = "Abbreviate large numbers",
 			func = function() self.db.global.AbbreviateLargeValues = not self.db.global.AbbreviateLargeValues; module:RefreshText(); end,
 			checked = function() return self.db.global.AbbreviateLargeValues; end,
@@ -326,152 +168,6 @@ end
 
 ------------------------------------------
 
-function module:ARTIFACT_XP_UPDATE()
+function module:AZERITE_ITEM_EXPERIENCE_CHANGED()
 	module:Refresh();
-end
-
-function module:UNIT_INVENTORY_CHANGED(event, unit)
-	if(unit ~= "player") then return end
-	if(self:IsDisabled()) then
-		Addon:CheckDisabledStatus();
-	else
-		module:Refresh(true);
-	end
-end
-
-local EMPOWERING_SPELL_ID = 227907;
-
-local ExperiencerAPScannerTooltip = CreateFrame("GameTooltip", "ExperiencerAPScannerTooltip", nil, "GameTooltipTemplate");
-
-local apStringValues = {
-	["enUS"] = {
-		"(%d*[%p%s]?%d+) million",
-		"(%d*[%p%s]?%d+) billion" 
-	},
-	["enGB"] = {
-		"(%d*[%p%s]?%d+) million",
-		"(%d*[%p%s]?%d+) billion" 
-	},
-	["ptBR"] = {
-		"(%d*[%p%s]?%d+) [[milhão][milhões]]?",
-		"(%d*[%p%s]?%d+) [[bilhão][bilhões]]?"
-	},
-	["esMX"] = {
-		"(%d*[%p%s]?%d+) [[millón][millones]]?",
-		"(%d*[%p%s]?%d+) [[billón][billones]]?" -- TODO
-	},
-	["deDE"] = {
-		"(%d*[%p%s]?%d+) [[Million][Millionen]]?",
-		"(%d*[%p%s]?%d+) [[Milliarde][Milliarden]]?"
-	},
-	["esES"] = {
-		"(%d*[%p%s]?%d+) [[millón][millones]]?",
-		"(%d*[%p%s]?%d+) [[billón][billones]]?" -- TODO
-	},
-	["frFR"] = {
-		"(%d*[%p%s]?%d+) [[million][millions]]?",
-		"(%d*[%p%s]?%d+) [[milliard][milliards]]?"
-	},
-	["itIT"] = {
-		"(%d*[%p%s]?%d+) [[milione][milioni]]?",
-		"(%d*[%p%s]?%d+) [[miliardo][miliardi]]?"
-	},
-	["ruRU"] = {
-		"(%d*[%p%s]?%d+) млн",
-		"(%d*[%p%s]?%d+) млн" -- TODO
-	},
-	["koKR"] = {
-		"(%d*[%p%s]?%d+)만",
-		"(%d*[%p%s]?%d+)억"
-	},
-	["zhTW"] = {
-		"(%d*[%p%s]?%d+)萬",
-		"(%d*[%p%s]?%d+)億"
-	},
-	["zhCN"] = {
-		"(%d*[%p%s]?%d+) 万",
-		"(%d*[%p%s]?%d+) 亿"
-	},
-};
-local apValueMultipliers = {
-	["default"] = { 1e6, 1e9 },
-	["koKR"]    = { 1e4, 1e8 },
-	["zhTW"]    = { 1e4, 1e8 },
-	["zhCN"]    = { 1e4, 1e8 },
-};
-
-local apStringValuesLocal = apStringValues[GetLocale()];
-local apValueMultiplierLocal = (apValueMultipliers[GetLocale()] or apValueMultipliers["default"]);
-
-function module:FindPowerItemsInInventory()
-	if(self.inLoadingScreen) then return 0, 0 end
-	
-	local powers = {};
-	local totalPower = 0;
-	
-	local spellName = GetSpellInfo(EMPOWERING_SPELL_ID);
-	
-	for container = 0, NUM_BAG_SLOTS do
-		local numSlots = GetContainerNumSlots(container);
-		
-		for slot = 1, numSlots do
-			local link = GetContainerItemLink(container, slot);
-			if(link and GetItemSpell(link) == spellName) then
-				local power = module:GetItemArtifactPower(link);
-				if(power) then
-					totalPower = totalPower + power;
-					tinsert(powers, {
-						link = link,
-						power = power,
-					});
-				end
-			end
-		end
-	end
-	
-	return totalPower, powers;
-end
-
-function module:StringMatchMultipleValues(str, values)
-	for index, pattern in ipairs(values) do
-		local value = strmatch(str, pattern);
-		if(value) then
-			return value, index;
-		end
-	end
-	return nil;
-end
-
-function module:GetItemArtifactPower(link)
-	if(not link) then return nil end
-	if(self.inLoadingScreen) then return nil end
-	
-	ExperiencerAPScannerTooltip:SetOwner(UIParent, "ANCHOR_NONE");
-	ExperiencerAPScannerTooltip:SetHyperlink(link);
-	
-	local tooltipText = ExperiencerAPScannerTooltipTextLeft4:GetText();
-	if(not tooltipText) then return nil end
-	
-	local digit1, digit2, digit3, power;
-	local value, multiplierIndex = module:StringMatchMultipleValues(tooltipText, apStringValuesLocal);
-
-	if (value and multiplierIndex) then
-		local multiplier = apValueMultiplierLocal[multiplierIndex];
-		
-		digit1, digit2 = strmatch(value, "(%d+)[%p%s](%d+)");
-		if (digit1 and digit2) then
-			power = tonumber(format("%s.%s", digit1, digit2)) * multiplier; 
-		else
-			power = tonumber(value) * multiplier; 
-		end 
-	else
-		digit1, digit2, digit3 = strmatch(tooltipText,"(%d+)[%p%s]?(%d+)[%p%s]?(%d*)");
-		power = tonumber(format("%s%s%s", digit1 or "", digit2 or "", (digit2 and digit3) and digit3 or ""));
-	end
-
-	if(power) then
-		return power;
-	end
-	
-	return nil;
 end

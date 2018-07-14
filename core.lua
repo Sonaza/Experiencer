@@ -76,6 +76,7 @@ function Addon:OnInitialize()
 			ActiveModules   = { },
 			
 			DataBrokerSource = 1,
+			BFASaveResetDone = false,
 		},
 		
 		global = {
@@ -106,6 +107,13 @@ end
 
 function Addon:OnEnable()
 	Addon:InitializeDataBroker();
+	
+	if (self.db.char.BFASaveResetDone == false) then
+		self.db.char.DataBrokerSource = 1;
+		self.db.char.NumSplits = 1;
+		self.db.char.ActiveModules = {};
+		self.db.char.BFASaveResetDone = true;
+	end
 	
 	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
 	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
@@ -208,9 +216,18 @@ function Addon:GetProgressColor(progress)
 	return string.format("|cff%02x%02x%02x", r * 255, g * 255, b * 255);
 end
 
+local function UnitAuraByNameOrId(unit, aura_name_or_id, filter)
+	for index = 1, 40 do
+		local name, _, _, _, _, _, _, _, _, spell_id = UnitAura(unit, index, filter);
+		if (name == aura_name_or_id or spell_id == aura_name_or_id) then
+			return UnitAura(unit, index, filter);
+		end
+	end
+	return nil;
+end
+
 function Addon:PlayerHasBuff(spellID)
-	local spellName = GetSpellInfo(spellID);
-	return UnitAura("player", spellName) ~= nil;
+	return UnitAuraByNameOrId("player", spellID, "HELPFUL") ~= nil;
 end
 
 local function roundnum(num, idp)
@@ -232,6 +249,9 @@ end
 function Addon:FormatNumberFancy(num, billions)
 	billions = billions or true;
 	num = tonumber(num);
+	if (not num) then
+		return num;
+	end
 	
 	local divisor = 1;
 	local suffix = "";
@@ -416,9 +436,13 @@ end
 
 function ExperiencerModuleBarsMixin:SetActiveModule(moduleId)
 	assert(moduleId ~= nil);
-	self.moduleId = moduleId;
-	self.module = Addon:GetModule(moduleId);
-	self:Refresh(true);
+	self.module = Addon:GetModule(moduleId, true);
+	if (self.module) then
+		self.moduleId = moduleId;
+		self:Refresh(true);
+	else
+		self:RemoveActiveModule();
+	end
 end
 
 function ExperiencerModuleBarsMixin:RemoveActiveModule()

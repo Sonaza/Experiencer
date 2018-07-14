@@ -1,3 +1,9 @@
+## 3.0.0
+* Updated for Battle for Azeroth.
+* Artifact module now tracks Heart of Azeroth once player receives it.
+* Honor module tracks current honor level progress. Prestige has been removed.
+* New conquest module tracks conquest reward track progress once player reaches level 120.
+
 ## 2.4.1
 * Fixed artifact module text with overloaded artifacts.
 

@@ -1,10 +1,10 @@
-## Interface: 70300
+## Interface: 80000
 ## Title: Experiencer
-## Notes: Simple and Advanced Experience and Reputation Progress Bar
+## Notes: Simple but advanced tracking progress bar addon
 ## Author: Sonaza
-## Version: 2.4.1
+## Version: 3.0.0
 ## OptionalDeps: Ace3
-## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor
+## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor, ExperiencerDB_module_conquest
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
@@ -22,6 +22,7 @@ modules\experience.lua
 modules\reputation.lua
 modules\artifact.lua
 modules\honor.lua
+modules\conquest.lua
 events.lua
 databroker.lua
 Frame.xml
