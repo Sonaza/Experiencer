@@ -1459,7 +1459,7 @@ function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	local minvalue, maxvalue = self.main:GetMinMaxValues();
 	self.color:SetValue(current);
 	
-	local progress = (current - minvalue) / (maxvalue - minvalue);
+	local progress = (current - minvalue) / max((maxvalue - minvalue), 1);
 	
 	if(progress > 0) then
 		self.main.spark:Show();

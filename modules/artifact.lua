@@ -51,6 +51,9 @@ function module:GetArtifactName()
 	end
 	local itemID = GetInventoryItemID("player", azeriteItemLocation.equipmentSlotIndex);
 	local name = GetItemInfo(itemID);
+	if (not name) then
+		self:RegisterEvent("GET_ITEM_INFO_RECEIVED");
+	end
 	return name;
 end
 
@@ -68,7 +71,7 @@ function module:GetText()
 	local name = module:GetArtifactName();
 	
 	tinsert(primaryText,
-		("|cffffecB3%s|r (Level %d):"):format(name, data.level)
+		("|cffffecB3%s|r (Level %d):"):format(name or "", data.level)
 	);
 	
 	if(self.db.global.ShowRemaining) then
@@ -167,6 +170,10 @@ function module:GetOptionsMenu()
 end
 
 ------------------------------------------
+
+function module:GET_ITEM_INFO_RECEIVED()
+	module:Refresh();
+end
 
 function module:AZERITE_ITEM_EXPERIENCE_CHANGED()
 	module:Refresh();
