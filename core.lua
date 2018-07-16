@@ -1402,20 +1402,6 @@ end
 function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
 	
-	-- if(self.LastExpandedTextField ~= Addon.ExpandedTextField) then
-	-- 	if(Addon.ExpandedTextField and Addon.ExpandedTextField ~= self:GetID()) then
-	-- 		local diff = math.abs(self:GetID() - Addon.ExpandedTextField);
-	-- 		if(diff == 1) then
-	-- 			self.textFrame.fadeoutHalf:Play();
-	-- 		else
-	-- 			self.textFrame.fadeinHalf:Play();
-	-- 		end
-	-- 	elseif(Addon.ExpandedTextField ~= self:GetID()) then
-	-- 		self.textFrame.fadeinHalf:Play();
-	-- 	end
-	-- end
-	-- self.LastExpandedTextField = Addon.ExpandedTextField;
-	
 	if(self.hasBuffer) then
 		self.bufferTimeout = self.bufferTimeout - elapsed;
 		if(self.bufferTimeout <= 0.0) then
