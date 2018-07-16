@@ -2,7 +2,7 @@
 Experience bar replacement for World of Warcraft.
 
 ## Description
-Experiencer is a minimum configuration required experience bar addon. It adds multi purpose experience, reputation, artifact power and honor progress bar to the bottom or the top of the screen. The bar can also be split in up to three different sections to display multiple data sources simultaneously. 
+Experiencer is a minimum configuration required experience bar addon. It adds multi purpose experience, reputation, artifact power, honor and conquest progress bar to the bottom or the top of the screen. The bar can also be split in up to three different sections to display multiple data sources simultaneously. 
 
 Note that because the Experiencer bar can **only be anchored to the top or the bottom of the screen** it may overlap with other frames positioned in those places.
 
