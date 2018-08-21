@@ -1,3 +1,6 @@
+## 3.0.1
+* Now auto watch automatically tracks reputation with largest gain when multiple reputations are earned at same time.
+
 ## 3.0.0
 * Updated for Battle for Azeroth.
 * Artifact module now tracks Heart of Azeroth once player receives it.
