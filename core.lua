@@ -517,8 +517,8 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 	
 	self:SetAnimationSpeed(1.0);
 	
-	if(valueHasChanged and not self.hasModuleChanged) then
-		if(self.previousData and not isLoss) then
+	if(valueHasChanged and not self.hasModuleChanged and not instant and not isLoss) then
+		if(self.previousData) then
 			local current = data.current;
 			local previous = self.previousData.current;
 			
@@ -535,10 +535,6 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 		self.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
 	else
 		self.main:SetAnimatedValues(data.current, data.min, data.max, data.level);
-		self.main:ProcessChangesInstantly();
-	end
-	
-	if(instant or isLoss) then
 		self.main:ProcessChangesInstantly();
 	end
 	
@@ -643,6 +639,7 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 	end
 	
 	if(instant or isLoss) then
+		self.hasBuffer = false;
 		self:TriggerBufferedUpdate(true);
 	else
 		self.hasBuffer = true;
@@ -1404,7 +1401,7 @@ function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	
 	if(self.hasBuffer) then
 		self.bufferTimeout = self.bufferTimeout - elapsed;
-		if(self.bufferTimeout <= 0.0) then
+		if(self.bufferTimeout <= 0.0 and not self.module:AllowedToBufferUpdate()) then
 			self:TriggerBufferedUpdate();
 			self.hasBuffer = false;
 		end

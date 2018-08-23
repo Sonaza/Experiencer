@@ -28,6 +28,10 @@ function module:IsDisabled()
 	return not C_AzeriteItem.HasActiveAzeriteItem()
 end
 
+function module:AllowedToBufferUpdate()
+	return true;
+end
+
 function module:Update(elapsed)
 	
 end

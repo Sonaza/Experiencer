@@ -1,3 +1,6 @@
+## 3.0.2
+* Fixed update issues with reputation bar while auto watch is enabled.
+
 ## 3.0.1
 * Now auto watch automatically tracks reputation with largest gain when multiple reputations are earned at same time.
 

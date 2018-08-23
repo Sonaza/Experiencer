@@ -32,6 +32,10 @@ function module:IsDisabled()
 	return UnitLevel("player") < HONOR_UNLOCK_LEVEL;
 end
 
+function module:AllowedToBufferUpdate()
+	return true;
+end
+
 function module:Update(elapsed)
 	
 end

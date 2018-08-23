@@ -101,6 +101,10 @@ function module:IsDisabled()
 	return module:IsPlayerMaxLevel() or IsXPUserDisabled();
 end
 
+function module:AllowedToBufferUpdate()
+	return true;
+end
+
 function module:Update(elapsed)
 	local lastPaused = module.session.Paused;
 	module.session.Paused = UnitIsAFK("player");

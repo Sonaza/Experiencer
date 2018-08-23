@@ -667,7 +667,7 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 		local name = GetWatchedFactionInfo();
 		if(not self.db.global.AutoWatch.IgnoreGuild or not isGuild) then
 			module.AutoWatchUpdate = true;
-			module.AutoWatchRecentTimeout = 0.25;
+			module.AutoWatchRecentTimeout = 0.1;
 			
 			if(not module.AutoWatchRecent[reputation]) then
 				module.AutoWatchRecent[reputation] = 0;
@@ -675,6 +675,10 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 			module.AutoWatchRecent[reputation] = module.AutoWatchRecent[reputation] + amount;
 		end
 	end
+end
+
+function module:AllowedToBufferUpdate()
+	return not module.AutoWatchUpdate;
 end
 
 function module:Update(elapsed)
