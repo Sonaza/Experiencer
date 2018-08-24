@@ -54,6 +54,7 @@ function module:Initialize()
 	end
 	
 	module.AutoWatchRecent = {};
+	module.AutoWatchUpdate = 0;
 	module.AutoWatchRecentTimeout = 0;
 end
 
@@ -631,6 +632,7 @@ function module:UPDATE_FACTION(event, ...)
 	local instant = false;
 	if(name ~= module.Tracked or not name) then
 		instant = true;
+		module.AutoWatchUpdate = 0;
 	end
 	module.Tracked = name;
 	
@@ -663,26 +665,30 @@ function module:CHAT_MSG_COMBAT_FACTION_CHANGE(event, message, ...)
 	
 	module.recentReputations[reputation].amount = module.recentReputations[reputation].amount + amount;
 	
-	if(self.db.global.AutoWatch.Enabled) then
-		local name = GetWatchedFactionInfo();
-		if(not self.db.global.AutoWatch.IgnoreGuild or not isGuild) then
-			module.AutoWatchUpdate = true;
-			module.AutoWatchRecentTimeout = 0.1;
-			
-			if(not module.AutoWatchRecent[reputation]) then
-				module.AutoWatchRecent[reputation] = 0;
-			end
-			module.AutoWatchRecent[reputation] = module.AutoWatchRecent[reputation] + amount;
+	if(self.db.global.AutoWatch.Enabled and module.AutoWatchUpdate ~= 2) then
+		local factionListIndex, factionID = module:GetReputationID(reputation);
+		if(not factionListIndex) then return end
+		
+		if(self.db.global.AutoWatch.IgnoreInactive and IsFactionInactive(factionListIndex)) then return end
+		if(self.db.global.AutoWatch.IgnoreBodyguard and BODYGUARD_FACTIONS[factionID] ~= nil) then return end
+		if(self.db.global.AutoWatch.IgnoreGuild and isGuild) then return end
+		
+		module.AutoWatchUpdate = 1;
+		module.AutoWatchRecentTimeout = 0.1;
+		
+		if(not module.AutoWatchRecent[reputation]) then
+			module.AutoWatchRecent[reputation] = 0;
 		end
+		module.AutoWatchRecent[reputation] = module.AutoWatchRecent[reputation] + amount;
 	end
 end
 
 function module:AllowedToBufferUpdate()
-	return not module.AutoWatchUpdate;
+	return module.AutoWatchUpdate == 0;
 end
 
 function module:Update(elapsed)
-	if (module.AutoWatchUpdate) then
+	if (module.AutoWatchUpdate == 1) then
 		if (module.AutoWatchRecentTimeout > 0.0) then
 			module.AutoWatchRecentTimeout = module.AutoWatchRecentTimeout - elapsed;
 		end
@@ -696,24 +702,20 @@ function module:Update(elapsed)
 					largestGain = gain;
 				end
 			end
-			if (selectedFaction) then
-				module:UpdateAutoWatch(selectedFaction);
+			
+			local name = GetWatchedFactionInfo();
+			if (selectedFaction ~= name) then
+				local factionListIndex, factionID = module:GetReputationID(selectedFaction);
+				if(factionListIndex) then
+					SetWatchedFactionIndex(factionListIndex);
+				end
+				module.AutoWatchUpdate = 2;
+			else
+				module.AutoWatchUpdate = 0;
 			end
 			
 			module.AutoWatchRecentTimeout = 0;
-			module.AutoWatchUpdate = false;
 			wipe(module.AutoWatchRecent);
 		end
 	end
 end
-
-function module:UpdateAutoWatch(reputation)
-	local factionListIndex, factionID = module:GetReputationID(reputation);
-	if(not factionListIndex) then return end
-	
-	if(self.db.global.AutoWatch.IgnoreInactive and IsFactionInactive(factionListIndex)) then return end
-	if(self.db.global.AutoWatch.IgnoreBodyguard and BODYGUARD_FACTIONS[factionID] ~= nil) then return end
-	
-	SetWatchedFactionIndex(factionListIndex);
-end
-

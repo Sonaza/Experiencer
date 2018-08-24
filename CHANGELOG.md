@@ -1,3 +1,6 @@
+## 3.0.3
+* Fixed yesterday's fix that broke everything.
+
 ## 3.0.2
 * Fixed update issues with reputation bar while auto watch is enabled.
 

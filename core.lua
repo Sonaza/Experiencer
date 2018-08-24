@@ -1401,7 +1401,7 @@ function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	
 	if(self.hasBuffer) then
 		self.bufferTimeout = self.bufferTimeout - elapsed;
-		if(self.bufferTimeout <= 0.0 and not self.module:AllowedToBufferUpdate()) then
+		if(self.bufferTimeout <= 0.0 and self.module:AllowedToBufferUpdate()) then
 			self:TriggerBufferedUpdate();
 			self.hasBuffer = false;
 		end
