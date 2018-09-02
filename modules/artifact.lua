@@ -12,6 +12,7 @@ local module = Addon:RegisterModule("artifact", {
 	savedvars   = {
 		global = {
 			ShowRemaining = true,
+			ShowGainedAP = true,
 			AbbreviateLargeValues = true,
 		},
 	},
@@ -22,6 +23,7 @@ module.hasCustomMouseCallback = false;
 
 function module:Initialize()
 	self:RegisterEvent("AZERITE_ITEM_EXPERIENCE_CHANGED");
+	module.apInSession = 0;
 end
 
 function module:IsDisabled()
@@ -67,6 +69,7 @@ function module:GetText()
 	end
 	
 	local primaryText = {};
+	local secondaryText = {};
 	
 	local data = self:GetBarData();
 	local remaining         = data.max - data.current;
@@ -88,7 +91,11 @@ function module:GetText()
 		);
 	end
 	
-	return table.concat(primaryText, "  "), nil;
+	if(self.db.global.ShowGainedAP and module.apInSession > 0) then
+		tinsert(secondaryText, string.format("+%s |cffffcc00AP|r", BreakUpLargeNumbers(module.apInSession)));
+	end
+	
+	return table.concat(primaryText, "  "), table.concat(secondaryText, "  ");
 end
 
 function module:HasChatMessage()
@@ -163,6 +170,12 @@ function module:GetOptionsMenu()
 			text = " ", isTitle = true, notCheckable = true,
 		},
 		{
+			text = "Show amount of Artififact Power gained in current session",
+			func = function() self.db.global.ShowGainedAP = not self.db.global.ShowGainedAP; module:RefreshText(); end,
+			checked = function() return self.db.global.ShowGainedAP; end,
+			isNotRadio = true,
+		},
+		{
 			text = "Abbreviate large numbers",
 			func = function() self.db.global.AbbreviateLargeValues = not self.db.global.AbbreviateLargeValues; module:RefreshText(); end,
 			checked = function() return self.db.global.AbbreviateLargeValues; end,
@@ -179,6 +192,9 @@ function module:GET_ITEM_INFO_RECEIVED()
 	module:Refresh();
 end
 
-function module:AZERITE_ITEM_EXPERIENCE_CHANGED()
+function module:AZERITE_ITEM_EXPERIENCE_CHANGED(_, _, oldAP, newAP)
+	if (oldAP ~= nil and newAP ~= nil) then
+		module.apInSession = module.apInSession + (newAP - oldAP);
+	end
 	module:Refresh();
 end

@@ -99,6 +99,11 @@ function Addon:OnInitialize()
 	};
 	
 	self.db = AceDB:New("ExperiencerDB", defaults);
+	
+	WorldMapFrame:HookScript("OnShow", function() Addon:UpdateVisiblity() end);
+	WorldMapFrame:HookScript("OnHide", function() Addon:UpdateVisiblity() end);
+	hooksecurefunc(WorldMapFrame, "Minimize", function() Addon:UpdateVisiblity() end);
+	hooksecurefunc(WorldMapFrame, "Maximize", function() Addon:UpdateVisiblity() end);
 end
 
 function ExperiencerSplitsAlertCloseButton_OnClick(self)
@@ -187,6 +192,10 @@ function Addon:ToggleVisibility(visiblity)
 end
 
 function Addon:UpdateVisiblity()
+	if (WorldMapFrame) then
+		ExperiencerFrame:SetShown(not WorldMapFrame.isMaximized or not WorldMapFrame:IsVisible());
+	end
+	
 	if(self.db.char.Visible) then
 		Addon:ShowBar();
 	else

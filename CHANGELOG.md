@@ -1,3 +1,7 @@
+## 3.0.4
+* Added counter that shows amount of Artifact Power gained in current session.
+* Fixed bug where Experiencer bars would still show when map was maximized.
+
 ## 3.0.3
 * Fixed yesterday's fix that broke everything.
 

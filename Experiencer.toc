@@ -2,7 +2,7 @@
 ## Title: Experiencer
 ## Notes: Simple but advanced tracking progress bar addon
 ## Author: Sonaza
-## Version: 3.0.3
+## Version: 3.0.4
 ## OptionalDeps: Ace3
 ## SavedVariables: ExperiencerDB, ExperiencerDB_module_experience, ExperiencerDB_module_reputation, ExperiencerDB_module_artifact, ExperiencerDB_module_honor, ExperiencerDB_module_conquest
 
