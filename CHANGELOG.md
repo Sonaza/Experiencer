@@ -1,3 +1,9 @@
+## 3.0.5
+* Fixed reputation module menu not properly changing reputations.
+* Fixed xp visualizer calculating experience rewards for hidden quests.
+* Added option to include the XP from account wide quests (pet battles). Disabled by default considering most players probably aren't doing these quests to level up.
+* Fixed heirloom and Recruit-a-Friend XP multipliers.
+
 ## 3.0.4
 * Added counter that shows amount of Artifact Power gained in current session.
 * Fixed bug where Experiencer bars would still show when map was maximized.

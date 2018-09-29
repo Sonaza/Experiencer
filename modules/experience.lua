@@ -30,6 +30,7 @@ local module = Addon:RegisterModule("experience", {
 			QuestXP = {
 				ShowText = true,
 				AddIncomplete = false,
+				IncludeAccountWide = false,
 				ShowVisualizer = true,
 			},
 		},
@@ -336,6 +337,12 @@ function module:GetOptionsMenu()
 			isNotRadio = true,
 		},
 		{
+			text = "Include XP from account wide quests (pet battles)",
+			func = function() self.db.global.QuestXP.IncludeAccountWide = not self.db.global.QuestXP.IncludeAccountWide; module:Refresh(); end,
+			checked = function() return self.db.global.QuestXP.IncludeAccountWide; end,
+			isNotRadio = true,
+		},
+		{
 			text = "Display visualizer bar",
 			func = function() self.db.global.QuestXP.ShowVisualizer = not self.db.global.QuestXP.ShowVisualizer; module:Refresh(); end,
 			checked = function() return self.db.global.QuestXP.ShowVisualizer; end,
@@ -460,23 +467,24 @@ end
 function module:CalculateXPMultiplier()
 	local multiplier = 1.0;
 	
-	if(module:HasRecruitingBonus()) then
-		multiplier = multiplier * 3.0;
-	end
-	
-	for _, slotID in ipairs(HEIRLOOM_SLOTS) do
-		local link = GetInventoryItemLink("player", slotID);
+	-- Heirloom xp bonus is now factored in quest log
+	--for _, slotID in ipairs(HEIRLOOM_SLOTS) do
+	--	local link = GetInventoryItemLink("player", slotID);
 		
-		if(link) then
-			local _, _, itemRarity, _, _, _, _, _, itemEquipLoc = GetItemInfo(link);
+	--	if(link) then
+	--		local _, _, itemRarity, _, _, _, _, _, itemEquipLoc = GetItemInfo(link);
 			
-			if(itemRarity == 7) then
-				local itemID = tonumber(strmatch(link, "item:(%d*)")) or 0;
-				local itemMultiplier = HEIRLOOM_ITEMXP[itemID] or HEIRLOOM_ITEMXP[itemEquipLoc];
+	--		if(itemRarity == 7) then
+	--			local itemID = tonumber(strmatch(link, "item:(%d*)")) or 0;
+	--			local itemMultiplier = HEIRLOOM_ITEMXP[itemID] or HEIRLOOM_ITEMXP[itemEquipLoc];
 				
-				multiplier = multiplier + itemMultiplier;
-			end
-		end
+	--			multiplier = multiplier + itemMultiplier;
+	--		end
+	--	end
+	--end
+	
+	if (module:HasRecruitingBonus()) then
+		multiplier = math.max(1.5, multiplier);
 	end
 	
 	local playerLevel = UnitLevel("player");
@@ -486,7 +494,7 @@ function module:CalculateXPMultiplier()
 			if(not buffMultiplier.maxlevel or (buffMultiplier.maxlevel and playerLevel <= buffMultiplier.maxlevel)) then
 				multiplier = multiplier + buffMultiplier.multiplier;
 			end
-		end 
+		end
 	end
 	
 	return multiplier;
@@ -494,39 +502,46 @@ end
 
 function module:CalculateQuestLogXP()
 	local completeXP, incompleteXP = 0, 0;
-	if (GetNumQuestLogEntries() == 0) then return 0, 0, 0; end
+	local _, numQuests = GetNumQuestLogEntries();
+	if (numQuests == 0) then return 0, 0, 0; end
 	
-	local index = 0;
+	local index = 1;
 	local lastSelected = GetQuestLogSelection();
-	
 	repeat
-		index = index + 1;
-		local questTitle, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(index);
-		
-		if(not isHeader) then
+		local title, _, _, isHeader, _, isComplete, _, questID, _, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory, isHidden, isScaling = GetQuestLogTitle(index);
+		if(title and not isHeader and not isHidden) then
 			SelectQuestLogEntry(index);
 			
-			local requiredMoney = GetQuestLogRequiredMoney(index);
-			local numObjectives = GetNumQuestLeaderBoards(index);
+			local validEntry = true;
 			
-			if(isComplete and isComplete < 0) then
-				isComplete = false;
-			elseif(numObjectives == 0 and GetMoney() >= requiredMoney) then
-				isComplete = true;
+			local questTagID, tagName = GetQuestTagInfo(questID);
+			if (questTagID == 102 and not self.db.global.QuestXP.IncludeAccountWide) then
+				validEntry = false;
 			end
 			
-			if(isComplete) then
-				completeXP = completeXP + GetQuestLogRewardXP();
-			else
-				incompleteXP = incompleteXP + GetQuestLogRewardXP();
+			if (validEntry) then
+				local requiredMoney = GetQuestLogRequiredMoney(index);
+				local numObjectives = GetNumQuestLeaderBoards(index);
+				
+				if(isComplete and isComplete < 0) then
+					isComplete = false;
+				elseif(numObjectives == 0 and GetMoney() >= requiredMoney) then
+					isComplete = true;
+				end
+				
+				if(isComplete) then
+					completeXP = completeXP + GetQuestLogRewardXP();
+				else
+					incompleteXP = incompleteXP + GetQuestLogRewardXP();
+				end
 			end
 		end
-	until(questTitle == nil);
+		index = index + 1;
+	until (title == nil);
 	
 	SelectQuestLogEntry(lastSelected);
 	
 	local multiplier = module:CalculateXPMultiplier();
-	
 	return completeXP * multiplier, incompleteXP * multiplier, (completeXP + incompleteXP) * multiplier;
 end
 

@@ -401,12 +401,19 @@ function module:GetReputationID(faction_name)
 			numFactions = GetNumFactions();
 		end
 		
-		if(name == faction_name) then return index, factionID end
+		if(name == faction_name) then
+			return index, factionID;
+		end
 			
 		index = index + 1;
 	end
 	
 	return nil
+end
+
+function module:MenuSetWatchedFactionIndex(factionIndex)
+	SetWatchedFactionIndex(factionIndex);
+	CloseMenus();
 end
 
 function module:GetRecentReputationsMenu()
@@ -424,8 +431,8 @@ function module:GetRecentReputationsMenu()
 		local name = rep.name;
 		local data = rep.data;
 		
-		local faction_index = module:GetReputationID(name);
-		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(faction_index);
+		local factionIndex = module:GetReputationID(name);
+		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(factionIndex);
 		local friend_level = select(7, GetFriendshipReputation(factionID));
 		local standing_text = "";
 		
@@ -439,7 +446,9 @@ function module:GetRecentReputationsMenu()
 		
 		tinsert(factions, {
 			text = string.format("%s (%s)  +%s rep this session", name, standing_text, BreakUpLargeNumbers(data.amount)),
-			func = function() SetWatchedFactionIndex(faction_index); CloseMenus(); end,
+			func = function()
+				module:MenuSetWatchedFactionIndex(factionIndex);
+			end,
 			checked = function() return isWatched end,
 		})
 	end
@@ -492,7 +501,8 @@ function module:GetReputationsMenu()
 	local depth = 0;
 	
 	local factionIndex = 1;
-	while factionIndex <= GetNumFactions() do
+	local numFactions = GetNumFactions();
+	while factionIndex <= numFactions do
 		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(factionIndex);
 		if(name) then
 			local progressText = "";
@@ -520,6 +530,7 @@ function module:GetReputationsMenu()
 			
 			if(isHeader and isCollapsed) then
 				ExpandFactionHeader(factionIndex);
+				numFactions = GetNumFactions();
 			end
 			
 			if(isHeader and isChild and current) then -- Second tier header
@@ -536,10 +547,13 @@ function module:GetReputationsMenu()
 						menuList = {},
 					})
 				else
+					local index = factionIndex;
 					tinsert(current, {
 						text = string.format("%s (%s)%s", name, standingText, progressText),
 						hasArrow = true,
-						func = function() SetWatchedFactionIndex(factionIndex); CloseMenus(); end,
+						func = function()
+							module:MenuSetWatchedFactionIndex(index);
+						end,
 						checked = function() return isWatched; end,
 						menuList = {},
 					})
@@ -572,9 +586,12 @@ function module:GetReputationsMenu()
 				
 				depth = 1
 			elseif(not isHeader) then -- First and second tier faction
+				local index = factionIndex;
 				tinsert(current, {
 					text = string.format("%s (%s)%s", name, standingText, progressText),
-					func = function() SetWatchedFactionIndex(factionIndex); CloseMenus(); end,
+					func = function()
+						module:MenuSetWatchedFactionIndex(factionIndex);
+					end,
 					checked = function() return isWatched end,
 				})
 			end
