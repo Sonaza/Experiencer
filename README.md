@@ -33,3 +33,6 @@ Experiencer options can be accessed by right clicking the bar or the DataBroker 
 
 ## Dependencies
 Experiencer uses Ace3, LibSharedMedia and LibDataBroker which are included in the /libs directory.
+
+## License
+Experiencer is licensed under MIT license. See license terms in file LICENSE.
