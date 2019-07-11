@@ -1,7 +1,7 @@
 ------------------------------------------------------------
--- Experiencer by Sonaza
--- All rights reserved
--- http://sonaza.com
+-- Experiencer by Sonaza (https://sonaza.com)
+-- Licensed under MIT License
+-- See attached license text in file LICENSE
 ------------------------------------------------------------
 
 local ADDON_NAME = ...;
