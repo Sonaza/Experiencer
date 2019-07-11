@@ -1,3 +1,7 @@
+## 3.0.6
+* Patch 8.2.0.
+* Attempted blind fix for artifact module GetItemInfo error.
+
 ## 3.0.5
 * Fixed reputation module menu not properly changing reputations.
 * Fixed xp visualizer calculating experience rewards for hidden quests.

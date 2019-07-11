@@ -55,7 +55,12 @@ function module:GetArtifactName()
 	if (not azeriteItemLocation) then
 		return "Azerite Artifact";
 	end
-	local itemID = GetInventoryItemID("player", azeriteItemLocation.equipmentSlotIndex);
+	
+	-- idk if the azeriteItemLocation.equipmentSlotIndex has changed or whatever
+	--local itemID = GetInventoryItemID("player", azeriteItemLocation.equipmentSlotIndex);
+	local itemID = GetInventoryItemID("player", 2); -- can probably hardcode the neck with its slot id
+	if (itemID == nil) then return "Unknown" end
+		
 	local name = GetItemInfo(itemID);
 	if (not name) then
 		self:RegisterEvent("GET_ITEM_INFO_RECEIVED");
