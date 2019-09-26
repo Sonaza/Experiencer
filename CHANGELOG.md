@@ -1,3 +1,7 @@
+## 3.1.0
+* Patch 8.2.5.
+* Fixed modules attempting to use resources before their initialization.
+
 ## 3.0.6
 * Patch 8.2.0.
 * Attempted blind fix for artifact module GetItemInfo error.

@@ -164,6 +164,8 @@ function Addon:InitializeModules()
 		
 		module:Initialize();
 	end
+	
+	Addon.modulesInitialized = true;
 end
 
 function Addon:RegisterModule(moduleId, prototype)
@@ -1390,13 +1392,15 @@ function Experiencer_OnUpdate(self, elapsed)
 	
 	Addon:CheckDisabledStatus();
 	
-	for _, module in Addon:IterateModules() do
-		module:Update(elapsed);
-	end
-	
-	for _, moduleFrame in Addon:GetModuleFrameIterator() do
-		if(moduleFrame:IsVisible() and moduleFrame.module) then
-			moduleFrame:OnUpdate(elapsed);
+	if (Addon.modulesInitialized) then
+		for _, module in Addon:IterateModules() do
+			module:Update(elapsed);
+		end
+		
+		for _, moduleFrame in Addon:GetModuleFrameIterator() do
+			if(moduleFrame:IsVisible() and moduleFrame.module) then
+				moduleFrame:OnUpdate(elapsed);
+			end
 		end
 	end
 	

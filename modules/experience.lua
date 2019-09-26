@@ -107,26 +107,30 @@ function module:AllowedToBufferUpdate()
 end
 
 function module:Update(elapsed)
-	local lastPaused = module.session.Paused;
-	module.session.Paused = UnitIsAFK("player");
+	local lastPaused = self.session.Paused;
+	self.session.Paused = UnitIsAFK("player");
 	
-	if(module.session.Paused and lastPaused ~= module.session.Paused) then
-		module:Refresh();
-	elseif(not module.session.Paused and lastPaused ~= module.session.Paused) then
-		module.session.LoginTime = module.session.LoginTime + math.floor(module.session.PausedTime);
-		module.session.PausedTime = 0;
+	if(self.session.Paused and lastPaused ~= self.session.Paused) then
+		self:Refresh();
+	elseif(not self.session.Paused and lastPaused ~= self.session.Paused) then
+		self.session.LoginTime = self.session.LoginTime + math.floor(self.session.PausedTime);
+		self.session.PausedTime = 0;
 	end
 	
-	if(module.session.Paused) then
-		module.session.PausedTime = module.session.PausedTime + elapsed;
+	if(self.session.Paused) then
+		self.session.PausedTime = self.session.PausedTime + elapsed;
 	end
 	
-	if(module.db.global.KeepSessionData) then
-		module.db.char.session.Exists = true;
+	if (self.db == nil) then
+		return;
+	end
+	
+	if(self.db.global.KeepSessionData) then
+		self.db.char.session.Exists = true;
 		
-		module.db.char.session.Time = time() - (module.session.LoginTime + math.floor(module.session.PausedTime));
-		module.db.char.session.TotalXP = module.session.GainedXP;
-		module.db.char.session.AverageQuestXP = module.session.AverageQuestXP;
+		self.db.char.session.Time = time() - (self.session.LoginTime + math.floor(self.session.PausedTime));
+		self.db.char.session.TotalXP = self.session.GainedXP;
+		self.db.char.session.AverageQuestXP = self.session.AverageQuestXP;
 	end
 end
 
