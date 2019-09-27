@@ -233,17 +233,6 @@
 				</Scripts>
 			</Frame>
 		</Frames>
-		<Scripts>
-			<OnLoad>
-				self:EnableMouse(true);
-				self:EnableMouseWheel(true);
-			</OnLoad>
-			<OnEnter function="Experiencer_OnEnter"/>
-			<OnLeave function="Experiencer_OnLeave"/>
-			<OnMouseDown function="Experiencer_OnMouseDown"/>
-			<OnMouseWheel function="Experiencer_OnMouseWheel"/>
-			<OnUpdate function="Experiencer_OnUpdate"/>
-		</Scripts>
 	</Frame>
 	
 </Ui>

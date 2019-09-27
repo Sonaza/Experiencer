@@ -26,5 +26,7 @@ function Addon:InitializeDataBroker()
 end
 
 function Addon:UpdateDataBrokerText(text)
-	Addon.BrokerModule.text = text;
+	if (Addon.BrokerModule ~= nil) then
+		Addon.BrokerModule.text = text;
+	end
 end

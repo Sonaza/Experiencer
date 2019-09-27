@@ -16,7 +16,7 @@ local LibSharedMedia = LibStub("LibSharedMedia-3.0");
 -- Adding default media to LibSharedMedia in case they're not already added
 LibSharedMedia:Register("font", "DorisPP", [[Interface\AddOns\Experiencer\media\DORISPP.TTF]]);
 
-EXPERIENCER_SPLITS_TIP = "You can now split Experiencer bar in up to three different sections allowing you to display more information at once.|n|nRight-click the bar to see options.";
+EXPERIENCER_SPLITS_TIP = "You can split Experiencer bar in up to three different sections allowing you to display more information at once.|n|nRight-click the bar to see options.";
 
 local TEXT_VISIBILITY_HIDE      = 1;
 local TEXT_VISIBILITY_HOVER     = 2;
@@ -54,7 +54,7 @@ function Addon:GetPlayerClassColor()
 end
 
 function Addon:GetBarColor()
-	if(self.db.global.Color.UseClassColor) then
+	if (self.db.global.Color.UseClassColor) then
 		return Addon:GetPlayerClassColor();
 	else
 		return {
@@ -71,12 +71,10 @@ function Addon:OnInitialize()
 			Visible 	    = true,
 			TextVisibility  = TEXT_VISIBILITY_ALWAYS,
 			
-			ActiveModule    = nil, -- Old setting now obsolete
 			NumSplits       = 1,
 			ActiveModules   = { },
 			
 			DataBrokerSource = 1,
-			BFASaveResetDone = false,
 		},
 		
 		global = {
@@ -100,49 +98,45 @@ function Addon:OnInitialize()
 	
 	self.db = AceDB:New("ExperiencerDB", defaults);
 	
-	WorldMapFrame:HookScript("OnShow", function() Addon:UpdateVisiblity() end);
-	WorldMapFrame:HookScript("OnHide", function() Addon:UpdateVisiblity() end);
-	hooksecurefunc(WorldMapFrame, "Minimize", function() Addon:UpdateVisiblity() end);
-	hooksecurefunc(WorldMapFrame, "Maximize", function() Addon:UpdateVisiblity() end);
-end
-
-function ExperiencerSplitsAlertCloseButton_OnClick(self)
-	Addon.db.global.SplitsTipShown = true;
-end
-
-function Addon:OnEnable()
 	Addon:InitializeDataBroker();
-	
-	if (self.db.char.BFASaveResetDone == false) then
-		self.db.char.DataBrokerSource = 1;
-		self.db.char.NumSplits = 1;
-		self.db.char.ActiveModules = {};
-		self.db.char.BFASaveResetDone = true;
-	end
-	
-	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
-	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
-	Addon:RegisterEvent("PET_BATTLE_CLOSE");
-	
 	Addon:InitializeModules();
 	
-	if(self.db.char.ActiveModule ~= nil) then
-		self.db.char.ActiveModules[1] = self.db.char.ActiveModule;
-		self.db.char.ActiveModule = nil;
-	end
-	
-	if(self.db.char.ActiveModules[1] == nil) then
+	if (self.db.char.ActiveModules[1] == nil) then
 		self.db.char.ActiveModules[1] = "experience";
 	end
 	
 	for index = 1, self.db.char.NumSplits do
-		if(self.db.char.ActiveModules[index]) then
+		if (self.db.char.ActiveModules[index]) then
 			Addon:SetModule(index, self.db.char.ActiveModules[index], true);
 		else
 			local newModule = Addon:FindValidModuleForBar(index);
 			Addon:SetModule(index, newModule.id, true);
 		end
 	end
+end
+
+function ExperiencerSplitsAlertCloseButton_OnClick(self)
+	Addon.db.global.SplitsTipShown = true;
+end
+
+function Addon:OnEnable()	
+	WorldMapFrame:HookScript("OnShow", function() Addon:UpdateVisiblity() end);
+	WorldMapFrame:HookScript("OnHide", function() Addon:UpdateVisiblity() end);
+	hooksecurefunc(WorldMapFrame, "Minimize", function() Addon:UpdateVisiblity() end);
+	hooksecurefunc(WorldMapFrame, "Maximize", function() Addon:UpdateVisiblity() end);
+	
+	Addon:RegisterEvent("PLAYER_REGEN_DISABLED");
+	Addon:RegisterEvent("PET_BATTLE_OPENING_START");
+	Addon:RegisterEvent("PET_BATTLE_CLOSE");
+	
+	ExperiencerFrame:EnableMouse(true);
+	ExperiencerFrame:EnableMouseWheel(true);
+	
+	ExperiencerFrame:SetScript("OnEnter", Experiencer_OnEnter);
+	ExperiencerFrame:SetScript("OnLeave", Experiencer_OnLeave);
+	ExperiencerFrame:SetScript("OnMouseDown", Experiencer_OnMouseDown);
+	ExperiencerFrame:SetScript("OnMouseWheel", Experiencer_OnMouseWheel);
+	ExperiencerFrame:SetScript("OnUpdate", Experiencer_OnUpdate);
 	
 	Addon:UpdateFrames();
 	
@@ -158,18 +152,19 @@ function Addon:InitializeModules()
 	for moduleId, module in Addon:IterateModules() do
 		Addon.orderedModules[module.order] = module;
 		
-		if(module.savedvars) then
+		if (module.savedvars) then
 			module.db = AceDB:New("ExperiencerDB_module_" .. moduleId, module.savedvars);
 		end
 		
 		module:Initialize();
+		module.initialized = true;
 	end
 	
 	Addon.modulesInitialized = true;
 end
 
 function Addon:RegisterModule(moduleId, prototype)
-	if(Addon:GetModule(moduleId, true) ~= nil) then
+	if (Addon:GetModule(moduleId, true) ~= nil) then
 		error(("Addon:RegisterModule(moduleId[, prototype]): Module '%s' is already registered."):format(tostring(moduleId)), 2);
 		return;
 	end
@@ -198,7 +193,7 @@ function Addon:UpdateVisiblity()
 		ExperiencerFrame:SetShown(not WorldMapFrame.isMaximized or not WorldMapFrame:IsVisible());
 	end
 	
-	if(self.db.char.Visible) then
+	if (self.db.char.Visible) then
 		Addon:ShowBar();
 	else
 		Addon:HideBar();
@@ -208,7 +203,7 @@ end
 function Addon:ShowBar()
 	ExperiencerFrameBars:Show();
 	
-	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+	if (Addon.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
 			moduleFrame.textFrame:Show();
 		end
@@ -248,9 +243,9 @@ end
 function Addon:FormatNumber(num)
 	num = tonumber(num);
 	
-	if(num >= 1000000) then
+	if (num >= 1000000) then
 		num = roundnum((num / 1000000), 2) .. "m";
-	elseif(num >= 1000) then
+	elseif (num >= 1000) then
 		num = roundnum((num / 1000), 2) .. "k";
 	end
 	
@@ -266,13 +261,13 @@ function Addon:FormatNumberFancy(num, billions)
 	
 	local divisor = 1;
 	local suffix = "";
-	if(num >= 1e9 and billions) then
+	if (num >= 1e9 and billions) then
 		suffix = "b";
 		divisor = 1e9;
-	elseif(num >= 1e6) then
+	elseif (num >= 1e6) then
 		suffix = "m";
 		divisor = 1e6;
-	elseif(num >= 1e3) then
+	elseif (num >= 1e3) then
 		suffix = "k";
 		divisor = 1e3;
 	end
@@ -286,7 +281,7 @@ end
 
 function Addon:RefreshModule(module, instant)
 	for _, moduleFrame in Addon:GetModuleFrameIterator() do
-		if(moduleFrame.module == module) then
+		if (moduleFrame.module == module) then
 			moduleFrame:Refresh(instant);
 			return;
 		end
@@ -295,10 +290,10 @@ end
 
 function Addon:RefreshText(module)
 	for _, moduleFrame in Addon:GetModuleFrameIterator() do
-		if(not module or moduleFrame.module == module) then
+		if (not module or moduleFrame.module == module) then
 			moduleFrame:RefreshText();
 		end
-		if(moduleFrame.module == module) then return end
+		if (moduleFrame.module == module) then return end
 	end
 end
 
@@ -319,25 +314,25 @@ end
 function Addon:UpdateFrames()
 	local anchor = Addon.db.global.AnchorPoint or "BOTTOM";
 	local offset = 0;
-	if(anchor == "TOP") then offset = 1 end
-	if(anchor == "BOTTOM") then offset = -1 end
+	if (anchor == "TOP") then offset = 1 end
+	if (anchor == "BOTTOM") then offset = -1 end
 	
 	ExperiencerFrame:ClearAllPoints();
 	ExperiencerFrame:SetPoint(anchor .. "LEFT", UIParent, anchor .. "LEFT", 0, offset);
 	ExperiencerFrame:SetPoint(anchor .. "RIGHT", UIParent, anchor .. "RIGHT", 0, offset);
 	
-	if(not Addon.db.global.SplitsTipShown) then
+	if (not Addon.db.global.SplitsTipShown) then
 		local alertFrame = ExperiencerFrame.SplitsAlert;
 		
 		alertFrame:ClearAllPoints();
 		alertFrame.Arrow:ClearAllPoints();
 		
-		if(anchor == "BOTTOM") then
+		if (anchor == "BOTTOM") then
 			alertFrame:SetPoint("BOTTOM", ExperiencerFrame, "TOP", 0, 30);
 			alertFrame.Arrow:SetPoint("TOP", alertFrame, "BOTTOM", 0, 2);
 			SetClampedTextureRotation(alertFrame.Arrow.Arrow, 0);
 			SetClampedTextureRotation(alertFrame.Arrow.Glow, 0);
-		elseif(anchor == "TOP") then
+		elseif (anchor == "TOP") then
 			alertFrame:SetPoint("TOP", ExperiencerFrame, "BOTTOM", 0, -30);
 			alertFrame.Arrow:SetPoint("BOTTOM", alertFrame, "TOP", 0, -2);
 			SetClampedTextureRotation(alertFrame.Arrow.Arrow, 180);
@@ -348,7 +343,7 @@ function Addon:UpdateFrames()
 		alertFrame:Show();
 	end
 	
-	if(not Addon.db.global.BigBars) then
+	if (not Addon.db.global.BigBars) then
 		ExperiencerFrame:SetHeight(10);
 	else
 		ExperiencerFrame:SetHeight(17);
@@ -368,13 +363,13 @@ function Addon:UpdateFrames()
 	moduleBar2:ClearAllPoints();
 	moduleBar3:ClearAllPoints();
 	
-	if(numSplits == 1) then
+	if (numSplits == 1) then
 		moduleBar1:Show();
 		moduleBar1:SetAllPoints(parentFrame);
 		
 		moduleBar2:Hide();
 		moduleBar3:Hide();
-	elseif(numSplits == 2) then
+	elseif (numSplits == 2) then
 		moduleBar1:Show();
 		moduleBar1:SetPoint("TOPLEFT",     parentFrame, "TOPLEFT",    0, 0);
 		moduleBar1:SetPoint("BOTTOMLEFT",  parentFrame, "BOTTOMLEFT", 0, 0);
@@ -386,7 +381,7 @@ function Addon:UpdateFrames()
 		moduleBar2:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", 0, 0);
 		
 		moduleBar3:Hide();
-	elseif(numSplits == 3) then
+	elseif (numSplits == 3) then
 		moduleBar1:Show();
 		moduleBar1:SetPoint("TOPLEFT",     parentFrame, "TOPLEFT",    0, 0);
 		moduleBar1:SetPoint("BOTTOMLEFT",  parentFrame, "BOTTOMLEFT", 0, 0);
@@ -426,7 +421,7 @@ function Addon:UpdateFrames()
 		
 		local frameHeightMultiplier = (self.db.global.FontScale - 1.0) * 0.55 + 1.0;
 		
-		if(not Addon.db.global.BigBars) then
+		if (not Addon.db.global.BigBars) then
 			moduleFrame.textFrame:SetHeight(math.max(18, 20 * frameHeightMultiplier));
 			moduleFrame.textFrame.text:SetFontObject("ExperiencerFont");
 		else
@@ -436,7 +431,7 @@ function Addon:UpdateFrames()
 		
 		for index, frameName in ipairs(FrameLevels) do
 			local frame = moduleFrame[frameName];
-			if(index == 1) then
+			if (index == 1) then
 				baseFrameLevel = frame:GetFrameLevel();
 			else
 				frame:SetFrameLevel(baseFrameLevel + index - 1);
@@ -471,10 +466,10 @@ function ExperiencerModuleBarsMixin:SetAnimationSpeed(speed)
 	local durationPerDistance = 0.008 * speed;
 	
 	for index, anim in ipairs({ self.main.Anim:GetAnimations() }) do
-		if(anim.durationPerDistance) then
+		if (anim.durationPerDistance) then
 			anim.durationPerDistance = durationPerDistance;
 		end
-		if(anim.delayPerDistance) then
+		if (anim.delayPerDistance) then
 			anim.delayPerDistance = durationPerDistance;
 		end
 	end
@@ -493,7 +488,7 @@ function Addon:RefreshBars(instant)
 end
 
 function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
-	if(not self.module) then return end
+	if (not self.module) then return end
 	
 	local data = self.module:GetBarData();
 	
@@ -502,23 +497,23 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 	local isLoss = false;
 	local changeCurrent = data.current;
 	
-	if(self.previousData and not self.hasModuleChanged) then
-		if(data.level == self.previousData.level and data.current < self.previousData.current) then
+	if (self.previousData and not self.hasModuleChanged) then
+		if (data.level == self.previousData.level and data.current < self.previousData.current) then
 			isLoss = true;
 			changeCurrent = self.previousData.current;
 		end
 		
-		if(data.level < self.previousData.level) then
+		if (data.level < self.previousData.level) then
 			isLoss = true;
 			changeCurrent = data.max;
 		end
 		
-		if(data.current == self.previousData.current) then
+		if (data.current == self.previousData.current) then
 			valueHasChanged = false;
 		end
 	end
 	
-	if(not isLoss) then
+	if (not isLoss) then
 		self.main.accumulationTimeoutInterval = 0.01;
 	else
 		self.main.accumulationTimeoutInterval = 0.35;
@@ -528,12 +523,12 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 	
 	self:SetAnimationSpeed(1.0);
 	
-	if(valueHasChanged and not self.hasModuleChanged and not instant and not isLoss) then
-		if(self.previousData) then
+	if (valueHasChanged and not self.hasModuleChanged and not instant and not isLoss) then
+		if (self.previousData) then
 			local current = data.current;
 			local previous = self.previousData.current;
 			
-			if(not self.hasModuleChanged and self.previousData.level < data.level) then
+			if (not self.hasModuleChanged and self.previousData.level < data.level) then
 				current = current + self.previousData.max;
 			end
 			
@@ -549,8 +544,8 @@ function ExperiencerModuleBarsMixin:TriggerBufferedUpdate(instant)
 		self.main:ProcessChangesInstantly();
 	end
 	
-	if(not instant and valueHasChanged and not self.hasModuleChanged) then
-		if(not isLoss) then
+	if (not instant and valueHasChanged and not self.hasModuleChanged) then
+		if (not isLoss) then
 			self.change.fadegain_in:Stop();
 			self.change.fadegain_out:Stop();
 			self.change.fadegain_out:Play();
@@ -570,13 +565,13 @@ function ExperiencerModuleBarsMixin:RefreshText()
 	local text = "";
 	local brokerText = "";
 	
-	if(self.module) then
+	if (self.module and self.module.initialized) then
 		local primaryText, secondaryText = self.module:GetText();
-		if(secondaryText and string.len(secondaryText) == 0) then secondaryText = nil end
+		if (secondaryText and string.len(secondaryText) == 0) then secondaryText = nil end
 		
-		if(secondaryText and Addon:ShouldShowSecondaryText(self:GetID())) then
+		if (secondaryText and Addon:ShouldShowSecondaryText(self:GetID())) then
 			text = string.trim(primaryText .. "  " .. secondaryText);
-		elseif(secondaryText) then
+		elseif (secondaryText) then
 			text = string.trim(primaryText .. "  |cffffff00+|r");
 		else
 			text = string.trim(primaryText);
@@ -586,7 +581,8 @@ function ExperiencerModuleBarsMixin:RefreshText()
 	end
 	
 	self.textFrame.text:SetText(text);
-	if(Addon.db.char.DataBrokerSource == self:GetID()) then
+	
+	if (Addon.db.char.DataBrokerSource == self:GetID()) then
 		Addon:UpdateDataBrokerText(brokerText);
 	end
 	
@@ -599,9 +595,9 @@ function ExperiencerModuleBarsMixin:RefreshText()
 	self.textFrame:SetWidth(math.max(sectionWidth, stringWidth + 26));
 	self.textFrame:SetClampedToScreen(true);
 	
-	if(Addon.Hovering and Addon:GetModuleIndexFromMousePosition() == self:GetID()) then
+	if (Addon.Hovering and Addon:GetModuleIndexFromMousePosition() == self:GetID()) then
 		Addon.ExpandedTextField = self:GetID();
-	elseif(Addon.ExpandedTextField == self:GetID()) then
+	elseif (Addon.ExpandedTextField == self:GetID()) then
 		Addon.ExpandedTextField = nil;
 	end
 end
@@ -613,7 +609,7 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 	self.previousModule = self.module;
 	
 	local data;
-	if(self.module) then
+	if (self.module and self.module.initialized) then
 		data = self.module:GetBarData();
 	else
 		data          = {};
@@ -633,23 +629,23 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 	
 	self.hasDataIdChanged = self.previousData and self.previousData.id ~= data.id;
 	
-	if(self.previousData and not self.hasModuleChanged and not self.hasDataIdChanged) then
-		if(data.level == self.previousData.level and data.current < self.previousData.current) then
+	if (self.previousData and not self.hasModuleChanged and not self.hasDataIdChanged) then
+		if (data.level == self.previousData.level and data.current < self.previousData.current) then
 			isLoss = true;
 			changeCurrent = self.previousData.current;
 		end
 		
-		if(data.level < self.previousData.level) then
+		if (data.level < self.previousData.level) then
 			isLoss = true;
 			changeCurrent = data.max;
 		end
 		
-		if(data.current == self.previousData.current) then
+		if (data.current == self.previousData.current) then
 			valueHasChanged = false;
 		end
 	end
 	
-	if(instant or isLoss) then
+	if (instant or isLoss) then
 		self.hasBuffer = false;
 		self:TriggerBufferedUpdate(true);
 	else
@@ -661,9 +657,9 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 	self.color:SetValue(self.main:GetContinuousAnimatedValue());
 	
 	self.change:SetMinMaxValues(data.min, data.max);
-	if(not isLoss) then
+	if (not isLoss) then
 		self.changeTarget = changeCurrent;
-		if(not self.change.fadegain_in:IsPlaying()) then
+		if (not self.change.fadegain_in:IsPlaying()) then
 			self.change:SetValue(self.main:GetContinuousAnimatedValue());
 		end
 	else
@@ -671,12 +667,12 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 		self.change:SetValue(changeCurrent);
 	end
 	
-	if(instant or self.hasModuleChanged or self.hasDataIdChanged) then
+	if (instant or self.hasModuleChanged or self.hasDataIdChanged) then
 		self.changeTarget = changeCurrent;
 		self.change:SetValue(self.changeTarget);
 	end
 	
-	if(data.rested and data.rested > 0) then
+	if (data.rested and data.rested > 0) then
 		self.rested:Show();
 		self.rested:SetMinMaxValues(data.min, data.max);
 		self.rested:SetValue(self.main:GetContinuousAnimatedValue() + data.rested);
@@ -684,15 +680,15 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 		self.rested:Hide();
 	end
 	
-	if(data.visual) then
+	if (data.visual) then
 		local primary, secondary;
-		if(type(data.visual) == "number") then
+		if (type(data.visual) == "number") then
 			primary = data.visual;
-		elseif(type(data.visual) == "table") then
+		elseif (type(data.visual) == "table") then
 			primary, secondary = unpack(data.visual);
 		end
 		
-		if(primary and primary > 0) then
+		if (primary and primary > 0) then
 			self.visualPrimary:Show();
 			self.visualPrimary:SetMinMaxValues(data.min, data.max);
 			self.visualPrimary:SetValue(self.main:GetContinuousAnimatedValue() + primary);
@@ -700,7 +696,7 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 			self.visualPrimary:Hide();
 		end
 		
-		if(secondary and secondary > 0) then
+		if (secondary and secondary > 0) then
 			self.visualSecondary:Show();
 			self.visualSecondary:SetMinMaxValues(data.min, data.max);
 			self.visualSecondary:SetValue(self.main:GetContinuousAnimatedValue() + secondary);
@@ -712,9 +708,9 @@ function ExperiencerModuleBarsMixin:Refresh(instant)
 		self.visualSecondary:Hide();
 	end
 	
-	if(not instant and valueHasChanged) then
-		if(not isLoss) then
-			if(not self.change.fadegain_in:IsPlaying()) then
+	if (not instant and valueHasChanged) then
+		if (not isLoss) then
+			if (not self.change.fadegain_in:IsPlaying()) then
 				self.change.fadegain_in:Play();
 			end
 		else
@@ -727,7 +723,7 @@ end
 function Addon:GetHoveredModule()
 	local hoveredIndex = Addon:GetModuleIndexFromMousePosition();
 	local moduleFrame = Addon:GetModuleFrame(hoveredIndex)
-	if(moduleFrame) then
+	if (moduleFrame) then
 		return moduleFrame.module;
 	end
 	return nil;
@@ -735,17 +731,17 @@ end
 
 function Addon:SendModuleChatMessage()
 	local module = Addon:GetHoveredModule();
-	if(not module) then return end
+	if (not module) then return end
 	
 	local hasMessage, reason = module:HasChatMessage();
-	if(not hasMessage) then
+	if (not hasMessage) then
 		DEFAULT_CHAT_FRAME:AddMessage(("|cfffaad07Experiencer|r %s"):format(reason));
 		return;
 	end
 	
 	local msg = module:GetChatMessage();
 	
-	if(IsControlKeyDown()) then
+	if (IsControlKeyDown()) then
 		ChatFrame_OpenChat(msg);
 	else
 		DEFAULT_CHAT_FRAME.editBox:SetText(msg)
@@ -753,17 +749,17 @@ function Addon:SendModuleChatMessage()
 end
 
 function Addon:ToggleTextVisilibity(visibility, noAnimation)
-	if(visibility) then
+	if (visibility) then
 		self.db.char.TextVisibility = visibility;
-	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+	elseif (self.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		self.db.char.TextVisibility = TEXT_VISIBILITY_ALWAYS;
-	elseif(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+	elseif (self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
 		self.db.char.TextVisibility = TEXT_VISIBILITY_HOVER;
 	end
 	
-	if(not noAnimation) then
+	if (not noAnimation) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
-			if(self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
+			if (self.db.char.TextVisibility == TEXT_VISIBILITY_ALWAYS) then
 				moduleFrame.textFrame.fadeout:Stop();
 				moduleFrame.textFrame.fadein:Play();
 			else
@@ -779,13 +775,13 @@ function Addon:GetNumOfEnabledModules()
 	local numActiveEnabled = 0;
 	
 	for _, module in Addon:IterateModules() do
-		if(not module:IsDisabled()) then
+		if (not module:IsDisabled()) then
 			numTotalEnabled = numTotalEnabled + 1;
 		end
 	end
 	for _, moduleId in ipairs(self.db.char.ActiveModules) do
 		local module = Addon:GetModule(moduleId, true);
-		if(module and not module:IsDisabled()) then
+		if (module and not module:IsDisabled()) then
 			numActiveEnabled = numActiveEnabled + 1;
 		end
 	end
@@ -796,13 +792,13 @@ function Addon:CollapseActiveModules()
 	local collapsedList = {};
 	for _, moduleId in ipairs(self.db.char.ActiveModules) do
 		local module = Addon:GetModule(moduleId, true);
-		if(module and not module:IsDisabled()) then
+		if (module and not module:IsDisabled()) then
 			tinsert(collapsedList, moduleId);
 		end
 	end
 	
 	self.db.char.ActiveModules = {};
-	if(#collapsedList > 0) then
+	if (#collapsedList > 0) then
 		for index, moduleId in ipairs(collapsedList) do
 			Addon:SetModule(index, moduleId, true);
 		end
@@ -817,15 +813,15 @@ end
 
 function Addon:CheckDisabledStatus()
 	local numTotalEnabled, numActiveEnabled = Addon:GetNumOfEnabledModules();
-	if(numActiveEnabled < self.db.char.NumSplits) then
-		if(numTotalEnabled == numActiveEnabled) then
+	if (numActiveEnabled < self.db.char.NumSplits) then
+		if (numTotalEnabled == numActiveEnabled) then
 			self.db.char.NumSplits = numActiveEnabled;
 			Addon:CollapseActiveModules();
 		else
 			for index = 1, self.db.char.NumSplits do
 				local moduleId = self.db.char.ActiveModules[index];
 				local module = Addon:GetModule(moduleId, true);
-				if(module and module:IsDisabled()) then
+				if (module and module:IsDisabled()) then
 					local newModule = Addon:FindValidModuleForBar(index);
 					Addon:SetModule(index, newModule.id, true);
 				end
@@ -834,30 +830,30 @@ function Addon:CheckDisabledStatus()
 	end
 end
 
-function Addon:SetModule(moduleIndex, moduleId, novalidation)
-	if(not novalidation) then
+function Addon:SetModule(splitIndex, moduleId, novalidation)
+	if (not novalidation) then
 		local alreadySet = nil;
-		for i=1, 3 do
-			if(i ~= moduleIndex and self.db.char.ActiveModules[i] == moduleId) then
+		for i = 1, 3 do
+			if (i ~= splitIndex and self.db.char.ActiveModules[i] == moduleId) then
 				alreadySet = i;
 				break;
 			end
 		end
 		
-		if(alreadySet) then
-			self.db.char.ActiveModules[alreadySet] = self.db.char.ActiveModules[moduleIndex];
+		if (alreadySet) then
+			self.db.char.ActiveModules[alreadySet] = self.db.char.ActiveModules[splitIndex];
 			
 			local moduleFrame = Addon:GetModuleFrame(alreadySet);
-			if(moduleFrame) then
+			if (moduleFrame) then
 				moduleFrame:SetActiveModule(self.db.char.ActiveModules[alreadySet]);
 			end
 		end
 	end
 	
-	self.db.char.ActiveModules[moduleIndex] = moduleId;
+	self.db.char.ActiveModules[splitIndex] = moduleId;
 	
-	local moduleFrame = Addon:GetModuleFrame(moduleIndex);
-	if(moduleId) then
+	local moduleFrame = Addon:GetModuleFrame(splitIndex);
+	if (moduleId) then
 		moduleFrame:SetActiveModule(moduleId);
 	else
 		moduleFrame:RemoveActiveModule();
@@ -869,8 +865,8 @@ end
 
 function Addon:IsModuleInUse(moduleId, ignoreIndex)
 	for index, activeModuleId in ipairs(self.db.char.ActiveModules) do
-		if(index > self.db.char.NumSplits) then break end
-		if(activeModuleId == moduleId and ignoreIndex ~= index) then
+		if (index > self.db.char.NumSplits) then break end
+		if (activeModuleId == moduleId and ignoreIndex ~= index) then
 			return true;
 		end
 	end
@@ -883,7 +879,7 @@ function Addon:FindValidModuleForBar(index, direction, findNext)
 	
 	local newIndex = 1;
 	local moduleFrame = Addon:GetModuleFrame(index);
-	if(moduleFrame.module) then
+	if (moduleFrame.module) then
 		newIndex = moduleFrame.module.order;
 	end
 	
@@ -891,17 +887,17 @@ function Addon:FindValidModuleForBar(index, direction, findNext)
 	local loops = 0;
 	
 	local orderedModule = Addon.orderedModules[newIndex];
-	if(findNext or orderedModule:IsDisabled() or Addon:IsModuleInUse(orderedModule.id, index)) then
+	if (findNext or orderedModule:IsDisabled() or Addon:IsModuleInUse(orderedModule.id, index)) then
 		repeat
 			newIndex = newIndex + direction;
-			if(newIndex > numModules) then newIndex = 1 end
-			if(newIndex < 1) then newIndex = numModules end
+			if (newIndex > numModules) then newIndex = 1 end
+			if (newIndex < 1) then newIndex = numModules end
 			orderedModule = Addon.orderedModules[newIndex];
 			
 			local isValid = true;
-			if(orderedModule:IsDisabled()) then
+			if (orderedModule:IsDisabled()) then
 				isValid = false;
-			elseif(Addon:IsModuleInUse(orderedModule.id, index)) then
+			elseif (Addon:IsModuleInUse(orderedModule.id, index)) then
 				isValid = false;
 			end
 			
@@ -909,7 +905,7 @@ function Addon:FindValidModuleForBar(index, direction, findNext)
 		until(isValid or loops > numModules);
 		
 		-- Nothing found, not enough modules
-		if(loops > numModules) then
+		if (loops > numModules) then
 			return nil;
 		end
 	end
@@ -921,7 +917,7 @@ function Addon:GetAnchors(frame)
 	local B, T = "BOTTOM", "TOP";
 	local x, y = frame:GetCenter();
 	
-	if(y < _G.GetScreenHeight() / 2) then
+	if (y < _G.GetScreenHeight() / 2) then
 		return B, T, 1;
 	else
 		return T, B, -1;
@@ -932,14 +928,14 @@ function Addon:SetSplits(newSplits)
 	local oldSplits = self.db.char.NumSplits;
 	self.db.char.NumSplits = newSplits;
 	
-	if(oldSplits < newSplits) then
+	if (oldSplits < newSplits) then
 		for index=2, newSplits do
 			local moduleId = self.db.char.ActiveModules[index];
-			if(not moduleId) then
+			if (not moduleId) then
 				local newModule = Addon:FindValidModuleForBar(index, 1, index);
 				moduleId = newModule.id;
 			end
-			if(moduleId) then
+			if (moduleId) then
 				Addon:SetModule(index, moduleId, true);
 			else
 				self.db.char.NumSplits = index - 1;
@@ -967,7 +963,7 @@ function Addon:GenerateFontsMenu(fontsMenu, fontsList, startIndex)
 			checked = function() return self.db.global.FontFace == fontsList[index]; end,
 		});
 		fontsAdded = fontsAdded + 1;
-		if(fontsAdded > 30 and index < numFonts) then
+		if (fontsAdded > 30 and index < numFonts) then
 			local subMenu = {};
 			Addon:GenerateFontsMenu(subMenu, fontsList, index+1);
 			tinsert(fontsMenu, {
@@ -1011,17 +1007,17 @@ function Addon:GetFontScaleMenu()
 end
 
 function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
-	if(InCombatLockdown()) then return end
+	if (InCombatLockdown()) then return end
 	anchorFrame = anchorFrame or ExperiencerFrameBars;
 	
-	if(not Addon.ContextMenu) then
+	if (not Addon.ContextMenu) then
 		Addon.ContextMenu = CreateFrame("Frame", "ExperiencerContextMenuFrame", UIParent, "UIDropDownMenuTemplate");
 	end
 	
 	local usedClassColor;
 	
 	local swatchFunc = function()
-		if(usedClassColor == nil) then
+		if (usedClassColor == nil) then
 			usedClassColor = self.db.global.Color.UseClassColor;
 			self.db.global.Color.UseClassColor = false;
 		end
@@ -1034,7 +1030,7 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 	end
 	
 	local cancelFunc = function(values)
-		if(usedClassColor == true) then
+		if (usedClassColor == true) then
 			self.db.global.Color.UseClassColor = true;
 		end
 		usedClassColor = nil;
@@ -1252,9 +1248,9 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 	for index, module in pairs(Addon.orderedModules) do
 		local menutext = module.label;
 		
-		if(module:IsDisabled()) then
+		if (module:IsDisabled()) then
 			menutext = string.format("%s |cffcccccc(inactive)|r", menutext);
-		elseif(self.db.char.ActiveModules[clickedModuleIndex] == module.id) then
+		elseif (self.db.char.ActiveModules[clickedModuleIndex] == module.id) then
 			menutext = string.format("%s |cff53c4ff(current)|r", menutext);
 		end
 		
@@ -1265,7 +1261,7 @@ function Addon:OpenContextMenu(anchorFrame, clickedModuleIndex)
 			end,
 			checked = function()
 				for i=1, self.db.char.NumSplits do
-					if(self.db.char.ActiveModules[i] == module.id) then
+					if (self.db.char.ActiveModules[i] == module.id) then
 						return true;
 					end
 				end
@@ -1309,7 +1305,7 @@ end
 
 function Addon:GetModuleFromModuleIndex(moduleIndex)
 	local moduleFrame = Addon:GetModuleFrame(moduleIndex);
-	if(moduleFrame and moduleFrame.module) then
+	if (moduleFrame and moduleFrame.module) then
 		return moduleFrame.module;
 	end
 end
@@ -1320,24 +1316,24 @@ function Experiencer_OnMouseDown(self, button)
 	local clickedModuleIndex = Addon:GetModuleIndexFromMousePosition();
 	
 	local clickedModule = Addon:GetModuleFromModuleIndex(clickedModuleIndex);
-	if(clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseDown) then
+	if (clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseDown) then
 		local hadAction = clickedModule:OnMouseDown(button);
-		if(hadAction) then return end
+		if (hadAction) then return end
 	end
 	
-	if(button == "LeftButton") then
-		if(IsShiftKeyDown()) then
+	if (button == "LeftButton") then
+		if (IsShiftKeyDown()) then
 			Addon:SendModuleChatMessage();
-		elseif(IsControlKeyDown()) then
+		elseif (IsControlKeyDown()) then
 			Addon:ToggleVisibility();
 		end
 	end
 	
-	if(button == "MiddleButton" and Addon.db.char.TextVisibility ~= TEXT_VISIBILITY_HIDE) then
+	if (button == "MiddleButton" and Addon.db.char.TextVisibility ~= TEXT_VISIBILITY_HIDE) then
 		Addon:ToggleTextVisilibity(nil, true);
 	end
 	
-	if(button == "RightButton") then
+	if (button == "RightButton") then
 		Addon:OpenContextMenu(self, clickedModuleIndex);
 	end
 end
@@ -1346,19 +1342,17 @@ function Experiencer_OnMouseWheel(self, delta)
 	local clickedModuleIndex = Addon:GetModuleIndexFromMousePosition();
 	
 	local clickedModule = Addon:GetModuleFromModuleIndex(clickedModuleIndex);
-	if(clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseWheel) then
+	if (clickedModule and clickedModule.hasCustomMouseCallback and clickedModule.OnMouseWheel) then
 		local hadAction = clickedModule:OnMouseWheel(delta);
-		if(hadAction) then return end
+		if (hadAction) then return end
 	end
 	
-	if(IsControlKeyDown()) then
+	if (IsControlKeyDown()) then
 		local hoveredModuleIndex = Addon:GetModuleIndexFromMousePosition();
 		
 		local newModule = Addon:FindValidModuleForBar(hoveredModuleIndex, -delta, true);
-		if(newModule) then
+		if (newModule) then
 			Addon:SetModule(hoveredModuleIndex, newModule.id);
-		else
-			print("No available module :OOO");
 		end
 		
 		Addon:RefreshBars(true);
@@ -1368,7 +1362,7 @@ end
 function Experiencer_OnEnter(self)
 	Addon.Hovering = true;
 	Addon:RefreshText();
-	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+	if (Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
 			moduleFrame.textFrame.fadeout:Stop();
 			moduleFrame.textFrame.fadein:Play();
@@ -1379,7 +1373,7 @@ end
 function Experiencer_OnLeave(self)
 	Addon.Hovering = false;
 	Addon:RefreshText();
-	if(Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
+	if (Addon.db.char.TextVisibility == TEXT_VISIBILITY_HOVER) then
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
 			moduleFrame.textFrame.fadein:Stop();
 			moduleFrame.textFrame.fadeout:Play();
@@ -1390,21 +1384,23 @@ end
 function Experiencer_OnUpdate(self, elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
 	
-	Addon:CheckDisabledStatus();
-	
 	if (Addon.modulesInitialized) then
+		Addon:CheckDisabledStatus();
+	
 		for _, module in Addon:IterateModules() do
-			module:Update(elapsed);
+			if (module.initialized) then
+				module:Update(elapsed);
+			end
 		end
 		
 		for _, moduleFrame in Addon:GetModuleFrameIterator() do
-			if(moduleFrame:IsVisible() and moduleFrame.module) then
+			if (moduleFrame:IsVisible() and moduleFrame.module) then
 				moduleFrame:OnUpdate(elapsed);
 			end
 		end
 	end
 	
-	if(Addon.Hovering) then
+	if (Addon.Hovering) then
 		Addon:RefreshText();
 	end
 end
@@ -1412,40 +1408,40 @@ end
 function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed;
 	
-	if(self.hasBuffer) then
+	if (self.hasBuffer) then
 		self.bufferTimeout = self.bufferTimeout - elapsed;
-		if(self.bufferTimeout <= 0.0 and self.module:AllowedToBufferUpdate()) then
+		if (self.bufferTimeout <= 0.0 and self.module:AllowedToBufferUpdate()) then
 			self:TriggerBufferedUpdate();
 			self.hasBuffer = false;
 		end
 	end
 	
 	local value = (self.changeTarget - self.change:GetValue()) * elapsed;
-	if(value >= 0) then
+	if (value >= 0) then
 		value = value / 0.175;
 	else
 		value = value / 0.325;
 	end
 	self.change:SetValue(self.change:GetValue() + value);
 	
-	if(self.previousData) then
-		if(self.rested:IsVisible() and self.previousData.rested) then
+	if (self.previousData) then
+		if (self.rested:IsVisible() and self.previousData.rested) then
 			self.rested:SetValue(self.main:GetContinuousAnimatedValue() + self.previousData.rested);
 		end
 		
-		if(self.previousData.visual) then
+		if (self.previousData.visual) then
 			local primary, secondary;
-			if(type(self.previousData.visual) == "number") then
+			if (type(self.previousData.visual) == "number") then
 				primary = self.previousData.visual;
-			elseif(type(self.previousData.visual) == "table") then
+			elseif (type(self.previousData.visual) == "table") then
 				primary, secondary = unpack(self.previousData.visual);
 			end
 			
-			if(self.visualPrimary:IsVisible() and primary) then
+			if (self.visualPrimary:IsVisible() and primary) then
 				self.visualPrimary:SetValue(self.main:GetContinuousAnimatedValue() + primary);
 			end
 			
-			if(self.visualSecondary:IsVisible() and secondary) then
+			if (self.visualSecondary:IsVisible() and secondary) then
 				self.visualSecondary:SetValue(self.main:GetContinuousAnimatedValue() + secondary);
 			end
 		end
@@ -1457,7 +1453,7 @@ function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 	
 	local progress = (current - minvalue) / max((maxvalue - minvalue), 1);
 	
-	if(progress > 0) then
+	if (progress > 0) then
 		self.main.spark:Show();
 		self.main.spark:ClearAllPoints();
 		self.main.spark:SetPoint("CENTER", self.main, "LEFT", progress * self.main:GetWidth(), 0);
@@ -1465,15 +1461,15 @@ function ExperiencerModuleBarsMixin:OnUpdate(elapsed)
 		self.main.spark:Hide();
 	end
 	
-	if(Addon.db.global.FlashLevelUp) then
-		if(self.module.levelUpRequiresAction) then
+	if (Addon.db.global.FlashLevelUp) then
+		if (self.module.levelUpRequiresAction) then
 			local canLevelUp = self.module:CanLevelUp();
 			self.highlight:SetMinMaxValues(minvalue, maxvalue);
 			self.highlight:SetValue(current);
 			
-			if(canLevelUp and not self.highlight:IsVisible()) then
+			if (canLevelUp and not self.highlight:IsVisible()) then
 				self.highlight.fadein:Play();
-			elseif(not canLevelUp and self.highlight:IsVisible()) then
+			elseif (not canLevelUp and self.highlight:IsVisible()) then
 				self.highlight.flash:Stop();
 				self.highlight.fadeout:Play();
 			end
@@ -1507,6 +1503,6 @@ function Addon:FormatTime(t)
 	end
 end
 
-if(not LibSharedMedia) then
+if (not LibSharedMedia) then
 	error("LibSharedMedia not loaded. You should restart the game.");
 end
