@@ -21,30 +21,45 @@ local module = Addon:RegisterModule("artifact", {
 module.levelUpRequiresAction = true;
 module.hasCustomMouseCallback = false;
 
+module.hasArtifact = true;
+
 function module:Initialize()
 	self:RegisterEvent("AZERITE_ITEM_EXPERIENCE_CHANGED");
+	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	module.apInSession = 0;
+	
+	module:UpdateHasArtifact();
+end
+
+function module:UNIT_INVENTORY_CHANGED(event, unit)
+	if (unit ~= "player") then return end
+	module:UpdateHasArtifact();
+	module:Refresh();
+end
+
+function module:IsDisabled()
+	return not module.hasArtifact;
 end
 
 local HEART_OF_AZEROTH_ITEM_ID = 158075;
 local HEART_OF_AZEROTH_QUEST_ID = 51211;
-
-function module:IsDisabled()
+	
+function module:UpdateHasArtifact()
 	local playerLevel = UnitLevel("player");
 	if (playerLevel < 110) then
-		return true;
-	end
-	
-	local hasArtifact = C_AzeriteItem.HasActiveAzeriteItem();
-	if (not hasArtifact) then
-		-- C_AzeriteItem.HasActiveAzeriteItem may return false
-		-- during initial game loading, try a fallback to item id
-		local itemId = GetInventoryItemID("player", 2);
-		if (itemId == HEART_OF_AZEROTH_ITEM_ID) then
-			hasArtifact = true;
+		module.hasArtifact = false;
+	else
+		local hasArtifact = C_AzeriteItem.HasActiveAzeriteItem();
+		if (not hasArtifact) then
+			-- C_AzeriteItem.HasActiveAzeriteItem may return false
+			-- during initial game loading, try a fallback to item id
+			local itemId = GetInventoryItemID("player", 2);
+			if (itemId == HEART_OF_AZEROTH_ITEM_ID) then
+				hasArtifact = true;
+			end
 		end
+		module.hasArtifact = hasArtifact;
 	end
-	return not hasArtifact;
 end
 
 function module:AllowedToBufferUpdate()
@@ -68,25 +83,26 @@ function module:FormatNumber(value)
 end
 
 function module:GetArtifactName()
-	local azeriteItemLocation = C_AzeriteItem.FindActiveAzeriteItem(); 
-	if (not azeriteItemLocation) then
-		return "Azerite Artifact";
-	end
+	--local azeriteItemLocation = C_AzeriteItem.FindActiveAzeriteItem(); 
+	--if (not azeriteItemLocation) then
+	--	return "Azerite Artifact";
+	--end
+	--local itemID = GetInventoryItemID("player", 2); -- can probably hardcode the neck with its slot id
+	--if (itemID == nil) then return "Unknown" end
 	
-	-- idk if the azeriteItemLocation.equipmentSlotIndex has changed or whatever
-	--local itemID = GetInventoryItemID("player", azeriteItemLocation.equipmentSlotIndex);
-	local itemID = GetInventoryItemID("player", 2); -- can probably hardcode the neck with its slot id
-	if (itemID == nil) then return "Unknown" end
+	local itemID = HEART_OF_AZEROTH_ITEM_ID;
 		
 	local name = GetItemInfo(itemID);
 	if (not name) then
 		self:RegisterEvent("GET_ITEM_INFO_RECEIVED");
+	else
+		self:UnregisterEvent("GET_ITEM_INFO_RECEIVED");
 	end
 	return name;
 end
 
 function module:GetText()
-	if(not C_AzeriteItem.HasActiveAzeriteItem()) then
+	if (module:IsDisabled()) then
 		return "No artifact";
 	end
 	

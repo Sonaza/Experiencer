@@ -1,3 +1,6 @@
+## 3.1.2
+* Fixed artifact module getting randomly disabled when changing zones.
+
 ## 3.1.1
 * Fixed changed Recruit-A-Friend check function call. Can't find specs on the level ranges so now it just calculates bonuses for anything up to level 120.
 * Fixed initial game load spouting total garbage values for everything, causing the addon think some bars were inactive/disabled. Selected bars shouldn't reset on game startup now.
