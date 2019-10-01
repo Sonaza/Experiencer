@@ -1,3 +1,6 @@
+## 3.1.3
+* Actually really probably maybe fixed the artifact module getting randomly disabled.
+
 ## 3.1.2
 * Fixed artifact module getting randomly disabled when changing zones.
 

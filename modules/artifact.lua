@@ -25,12 +25,37 @@ module.hasArtifact = true;
 
 function module:Initialize()
 	self:RegisterEvent("AZERITE_ITEM_EXPERIENCE_CHANGED");
-	self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	module.apInSession = 0;
 	
-	module:UpdateHasArtifact();
+	if (UnitLevel("player") < 110) then
+		self:RegisterEvent("PLAYER_LEVEL_UP");
+		module.hasArtifact = false;
+	else
+		C_Timer.After(4, function()
+			self:RegisterEvent("UNIT_INVENTORY_CHANGED");
+			module:UpdateHasArtifact();
+		end);
+	end
 end
 
+function module:PLAYER_LEVEL_UP(event, level)
+	if (level >= 110) then
+		self:RegisterEvent("UNIT_INVENTORY_CHANGED");
+		self:RegisterEvent("QUEST_LOG_UPDATE");
+		self:UnregisterEvent("PLAYER_LEVEL_UP");
+	end
+end
+
+local HEART_OF_AZEROTH_ITEM_ID = 158075;
+local HEART_OF_AZEROTH_QUEST_ID = 51211;
+
+function module:QUEST_LOG_UPDATE(event)
+	if (C_QuestLog.IsQuestFlaggedCompleted(HEART_OF_AZEROTH_QUEST_ID)) then
+		module.hasArtifact = true;
+		self:UnregisterEvent("QUEST_LOG_UPDATE");
+	end
+end
+	
 function module:UNIT_INVENTORY_CHANGED(event, unit)
 	if (unit ~= "player") then return end
 	module:UpdateHasArtifact();
@@ -41,9 +66,6 @@ function module:IsDisabled()
 	return not module.hasArtifact;
 end
 
-local HEART_OF_AZEROTH_ITEM_ID = 158075;
-local HEART_OF_AZEROTH_QUEST_ID = 51211;
-	
 function module:UpdateHasArtifact()
 	local playerLevel = UnitLevel("player");
 	if (playerLevel < 110) then
