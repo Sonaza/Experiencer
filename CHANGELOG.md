@@ -1,3 +1,6 @@
+## 4.0.0
+* Shadowlands prepatch compability update by shururuun (https://github.com/shururuun)
+
 ## 3.1.3
 * Actually really probably maybe fixed the artifact module getting randomly disabled.
 
