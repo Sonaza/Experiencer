@@ -401,7 +401,7 @@ function module:ResetSession()
 end
 
 function module:IsPlayerMaxLevel(level)
-	return MAX_PLAYER_LEVEL_TABLE[GetExpansionLevel()] == (level or UnitLevel("player"));
+	return GetMaxLevelForPlayerExpansion() == (level or UnitLevel("player"));
 end
 
 function module:CalculateHourlyXP()
@@ -506,44 +506,24 @@ end
 
 function module:CalculateQuestLogXP()
 	local completeXP, incompleteXP = 0, 0;
-	local _, numQuests = GetNumQuestLogEntries();
+	local _, numQuests = C_QuestLog.GetNumQuestLogEntries();
 	if (numQuests == 0) then return 0, 0, 0; end
-	
-	local index = 1;
-	local lastSelected = GetQuestLogSelection();
-	repeat
-		local title, _, _, isHeader, _, isComplete, _, questID, _, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory, isHidden, isScaling = GetQuestLogTitle(index);
-		if (title and not isHeader and not isHidden) then
-			SelectQuestLogEntry(index);
-			
-			local validEntry = true;
-			
-			local questTagID, tagName = GetQuestTagInfo(questID);
-			if (questTagID == 102 and not self.db.global.QuestXP.IncludeAccountWide) then
-				validEntry = false;
-			end
-			
-			if (validEntry) then
-				local requiredMoney = GetQuestLogRequiredMoney(index);
-				local numObjectives = GetNumQuestLeaderBoards(index);
-				
-				if (isComplete and isComplete < 0) then
-					isComplete = false;
-				elseif (numObjectives == 0 and GetMoney() >= requiredMoney) then
-					isComplete = true;
-				end
-				
-				if (isComplete) then
-					completeXP = completeXP + GetQuestLogRewardXP();
-				else
-					incompleteXP = incompleteXP + GetQuestLogRewardXP();
-				end
-			end
+
+	for index = 1, numQuests do repeat
+		qinfo = C_QuestLog.GetInfo(index)
+		if (qinfo["questID"] == 0 or qinfo["isHeader"] or qinfo["isHidden"]) then
+			break
 		end
-		index = index + 1;
-	until (title == nil);
-	
-	SelectQuestLogEntry(lastSelected);
+		if (not self.db.global.QuestXP.IncludeAccountWide and C_QuestLog.IsAccountQuest(qinfo["questID"])) then
+			break
+		end
+ 		print(string.format("Checking %d: %d", qinfo["index"], qinfo["questID"]));
+		if (C_QuestLog.ReadyForTurnIn(qinfo["questID"])) then
+			completeXP = completeXP + GetQuestLogRewardXP(questID);
+		else
+			incompleteXP = incompleteXP + GetQuestLogRewardXP(questID);
+ 		end
+	until true end
 	
 	local multiplier = module:CalculateXPMultiplier();
 	return completeXP * multiplier, incompleteXP * multiplier, (completeXP + incompleteXP) * multiplier;
