@@ -506,19 +506,20 @@ end
 
 function module:CalculateQuestLogXP()
 	local completeXP, incompleteXP = 0, 0;
-	local _, numQuests = C_QuestLog.GetNumQuestLogEntries();
-	if (numQuests == 0) then return 0, 0, 0; end
 
-	for index = 1, numQuests do repeat
-		qinfo = C_QuestLog.GetInfo(index)
-		if (qinfo["questID"] == 0 or qinfo["isHeader"] or qinfo["isHidden"]) then
+	local numEntries, _ = C_QuestLog.GetNumQuestLogEntries();
+	if (numEntries == 0) then return 0, 0, 0; end
+
+	for index = 1, numEntries do repeat
+		local qinfo = C_QuestLog.GetInfo(index)
+		local questID = qinfo["questID"]
+		if (questID == 0 or qinfo["isHeader"] or qinfo["isHidden"]) then
 			break
 		end
-		if (not self.db.global.QuestXP.IncludeAccountWide and C_QuestLog.IsAccountQuest(qinfo["questID"])) then
+		if (not self.db.global.QuestXP.IncludeAccountWide and C_QuestLog.IsAccountQuest(questID)) then
 			break
 		end
- 		print(string.format("Checking %d: %d", qinfo["index"], qinfo["questID"]));
-		if (C_QuestLog.ReadyForTurnIn(qinfo["questID"])) then
+		if (C_QuestLog.ReadyForTurnIn(questID)) then
 			completeXP = completeXP + GetQuestLogRewardXP(questID);
 		else
 			incompleteXP = incompleteXP + GetQuestLogRewardXP(questID);
