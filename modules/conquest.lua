@@ -20,7 +20,7 @@ local module = Addon:RegisterModule("conquest", {
 module.levelUpRequiresAction = true;
 module.hasCustomMouseCallback = false;
 
-local CONQUEST_UNLOCK_LEVEL = 120;
+local CONQUEST_UNLOCK_LEVEL = 50;
 
 function module:Initialize()
 	self:RegisterEvent("QUEST_LOG_UPDATE");
@@ -28,7 +28,7 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	return UnitLevel("player") < CONQUEST_UNLOCK_LEVEL;
+	return GetMaxLevelForLatestExpansion() < (level or UnitLevel("player"));
 end
 
 function module:AllowedToBufferUpdate()
