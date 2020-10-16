@@ -45,7 +45,7 @@ function module:GetConquestLevelInfo()
 	local currentQuestID = quests[1];
 	local stageIndex = 1;
 	for i, questID in ipairs(quests) do
-		if not IsQuestFlaggedCompleted(questID) and not C_QuestLog.IsOnQuest(questID) then
+		if not C_QuestLog.IsQuestFlaggedCompleted(questID) and not C_QuestLog.IsOnQuest(questID) then
 			break;
 		end
 		currentQuestID = questID;
