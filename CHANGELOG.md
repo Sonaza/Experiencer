@@ -1,3 +1,10 @@
+## 4.0.1
+* More fixes by shururuun (https://github.com/shururuun):
+  * Fixed max level and quest log scanning.
+  * Changed Azerite level scanning ranges.
+  * Enable honor depending on honor display.
+  * Enable conquest for max level characters.
+
 ## 4.0.0
 * Shadowlands prepatch compability update by shururuun (https://github.com/shururuun)
 
