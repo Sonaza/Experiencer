@@ -27,7 +27,7 @@ function module:Initialize()
 	self:RegisterEvent("AZERITE_ITEM_EXPERIENCE_CHANGED");
 	module.apInSession = 0;
 	
-	if (UnitLevel("player") < 110) then
+	if (UnitLevel("player") < 10) then
 		self:RegisterEvent("PLAYER_LEVEL_UP");
 		module.hasArtifact = false;
 	else
@@ -39,7 +39,7 @@ function module:Initialize()
 end
 
 function module:PLAYER_LEVEL_UP(event, level)
-	if (level >= 110) then
+	if (level >= 10) then
 		self:RegisterEvent("UNIT_INVENTORY_CHANGED");
 		self:RegisterEvent("QUEST_LOG_UPDATE");
 		self:UnregisterEvent("PLAYER_LEVEL_UP");
@@ -68,7 +68,7 @@ end
 
 function module:UpdateHasArtifact()
 	local playerLevel = UnitLevel("player");
-	if (playerLevel < 110) then
+	if (playerLevel < 10) then
 		module.hasArtifact = false;
 	else
 		local hasArtifact = C_AzeriteItem.HasActiveAzeriteItem();

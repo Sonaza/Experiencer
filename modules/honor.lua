@@ -21,15 +21,13 @@ local module = Addon:RegisterModule("honor", {
 module.levelUpRequiresAction = true;
 module.hasCustomMouseCallback = false;
 
-local HONOR_UNLOCK_LEVEL = 110;
-
 function module:Initialize()
 	self:RegisterEvent("HONOR_XP_UPDATE");
 	self:RegisterEvent("HONOR_LEVEL_UPDATE");
 end
 
 function module:IsDisabled()
-	return UnitLevel("player") < HONOR_UNLOCK_LEVEL;
+	return not C_PvP.CanDisplayHonorableKills();
 end
 
 function module:AllowedToBufferUpdate()

@@ -20,7 +20,7 @@ local module = Addon:RegisterModule("conquest", {
 module.levelUpRequiresAction = true;
 module.hasCustomMouseCallback = false;
 
-local CONQUEST_UNLOCK_LEVEL = 120;
+local CONQUEST_UNLOCK_LEVEL = 50;
 
 function module:Initialize()
 	self:RegisterEvent("QUEST_LOG_UPDATE");
@@ -28,7 +28,7 @@ function module:Initialize()
 end
 
 function module:IsDisabled()
-	return UnitLevel("player") < CONQUEST_UNLOCK_LEVEL;
+	return GetMaxLevelForLatestExpansion() < (level or UnitLevel("player"));
 end
 
 function module:AllowedToBufferUpdate()
@@ -45,7 +45,7 @@ function module:GetConquestLevelInfo()
 	local currentQuestID = quests[1];
 	local stageIndex = 1;
 	for i, questID in ipairs(quests) do
-		if not IsQuestFlaggedCompleted(questID) and not C_QuestLog.IsOnQuest(questID) then
+		if not C_QuestLog.IsQuestFlaggedCompleted(questID) and not C_QuestLog.IsOnQuest(questID) then
 			break;
 		end
 		currentQuestID = questID;
