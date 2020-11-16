@@ -1,4 +1,4 @@
-## Interface: 90000
+## Interface: 90001
 ## Title: Experiencer
 ## Notes: Simple but advanced tracking progress bar addon
 ## Author: Sonaza
