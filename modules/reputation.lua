@@ -124,14 +124,18 @@ function module:GetText()
 	local rep_text = {};
 	
 	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
-	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	--local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	local reputationInfo = C_GossipInfo.GetFriendshipReputation(factionID);
+	local friendLevel = reputationInfo.standing;
+	local friendThreshold = reputationInfo.reactionThreshold;
+	local nextFriendThreshold = reputationInfo.nextThreshold;
 	
 	local standingText = "";
 	local isCapped = false;
 	local hasRewardPending = false;
 	local paragonLevel = 0;
 	
-	if(friendLevel) then
+	if(friendLevel > 0) then
 		standingText = friendLevel;
 		if(not nextFriendThreshold) then
 			isCapped = true;
@@ -152,7 +156,7 @@ function module:GetText()
 		currentReputation = currentReputation % maxReputation;
 		
 		if(paragonLevel == 1) then
-			standingText = module:GetStandingColorText(standing+1);
+			standingText = module:GetStandingColorText(standing+1);			
 		elseif(paragonLevel > 1) then
 			standingText = string.format("%dx %s", paragonLevel, module:GetStandingColorText(standing+1));
 		end
@@ -200,14 +204,19 @@ end
 
 function module:GetChatMessage()
 	local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
-	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	-- local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	local reputationInfo = C_GossipInfo.GetFriendshipReputation(factionID);
+	local friendLevel = reputationInfo.standing;
+	local friendThreshold = reputationInfo.reactionThreshold;
+	local nextFriendThreshold = reputationInfo.nextThreshold;
+	
 	
 	local standingText = "";
 	local isCapped = false;
 	local hasRewardPending = false;
 	local paragonLevel = 0;
 	
-	if(friendLevel) then
+	if(friendLevel > 0) then
 		standingText = friendLevel;
 		if(not nextFriendThreshold) then
 			isCapped = true;
@@ -268,14 +277,18 @@ function module:GetBarData()
 		local name, standing, minReputation, maxReputation, currentReputation, factionID = GetWatchedFactionInfo();
 		data.id = factionID;
 		
-		local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
-		
+		-- local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+		local reputationInfo = C_GossipInfo.GetFriendshipReputation(factionID);
+		local friendLevel = reputationInfo.standing;
+		local friendThreshold = reputationInfo.reactionThreshold;
+		local nextFriendThreshold = reputationInfo.nextThreshold;
+
 		local standingText = "";
 		local isCapped = false;
 		local hasRewardPending = false;
 		local paragonLevel = 0;
 		
-		if(friendLevel and not nextFriendThreshold) then
+		if(friendLevel ~= 0 and not nextFriendThreshold) then
 			isCapped = true;
 		elseif(standing == MAX_REPUTATION_REACTION) then
 			isCapped = true;
@@ -433,7 +446,10 @@ function module:GetRecentReputationsMenu()
 		
 		local factionIndex = module:GetReputationID(name);
 		local _, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(factionIndex);
-		local friend_level = select(7, GetFriendshipReputation(factionID));
+		-- local friend_level = select(7, GetFriendshipReputation(factionID));
+		local friend_level = C_GossipInfo.GetFriendshipReputation(factionID).standing;
+		
+		
 		local standing_text = "";
 		
 		if(not isHeader or hasRep) then
@@ -469,7 +485,12 @@ function module:GetReputationProgressByFactionID(factionID)
 	local isCapped = false;
 	local isParagon = false;
 	
-	local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	-- local friendLevel, friendThreshold, nextFriendThreshold = select(7, GetFriendshipReputation(factionID));
+	local reputationInfo = C_GossipInfo.GetFriendshipReputation(factionID)
+	local friendLevel = reputationInfo.standing
+	local friendThreshold = reputationInfo.reactionThreshold
+	local nextFriendThreshold = reputationInfo.nextThreshold
+
 	if(friendLevel) then
 		if(not nextFriendThreshold) then
 			isCapped = true;
@@ -517,7 +538,8 @@ function module:GetReputationsMenu()
 				end
 			end
 				
-			local friendLevel = select(7, GetFriendshipReputation(factionID));
+			-- local friendLevel = select(7, GetFriendshipReputation(factionID));
+			local friendLevel = C_GossipInfo.GetFriendshipReputation(factionID).standing
 			local standingText = "";
 			
 			if(not isHeader or hasRep) then
