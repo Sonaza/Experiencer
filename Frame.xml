@@ -77,7 +77,8 @@
 					<Frame name="$parentSpark" parentKey="spark">
 						<Size x="9" y="24"/>
 						<Anchors>
-							<Anchor center="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/>
+							<!-- <Anchor center="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/> -->
+							<!-- <Anchor point="CENTER" relativePoint="TOPLEFT" relativeTo="$parent" x="500" y="16"/> -->
 						</Anchors>
 						<Layers>
 							<Layer level="ARTWORK">
