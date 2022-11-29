@@ -525,10 +525,13 @@ function module:GetReputationsMenu()
 	local numFactions = GetNumFactions();
 	while factionIndex <= numFactions do
 		local name, _, standing, _, _, _, _, _, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID = GetFactionInfo(factionIndex);
+		local friendLevel = nil;
+		local standingText = "";
 		if(name) then
 			local progressText = "";
 			if(factionID) then
 				local currentRep, nextThreshold, isCapped, isParagon = module:GetReputationProgressByFactionID(factionID);
+				friendLevel = C_GossipInfo.GetFriendshipReputation(factionID).standing
 				if(isParagon) then
 					standing = standing + 1;
 				end
@@ -539,8 +542,7 @@ function module:GetReputationsMenu()
 			end
 				
 			-- local friendLevel = select(7, GetFriendshipReputation(factionID));
-			local friendLevel = C_GossipInfo.GetFriendshipReputation(factionID).standing
-			local standingText = "";
+
 			
 			if(not isHeader or hasRep) then
 				if(friendLevel) then
